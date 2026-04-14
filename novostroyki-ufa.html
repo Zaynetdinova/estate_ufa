@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Новостройки Уфы — найди свою квартиру</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Unbounded:wght@400;600;700&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --blue:#2F80ED;--blue-dark:#1A6DD4;--blue-light:#EBF4FF;
+  --green:#27AE60;--green-light:#E8F8EE;
+  --orange:#F2994A;--red:#EB5757;
+  --ink:#0F1923;--ink-60:rgba(15,25,35,.6);--ink-30:rgba(15,25,35,.3);
+  --bg:#F7F9FC;--white:#FFFFFF;
+  --border:rgba(15,25,35,.08);--border-strong:rgba(15,25,35,.15);
+  --shadow-sm:0 1px 4px rgba(0,0,0,.06);
+  --shadow:0 4px 20px rgba(0,0,0,.08);
+  --shadow-lg:0 16px 48px rgba(0,0,0,.12);
+  --r:12px;--r-lg:20px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;overflow-x:hidden}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:3px}
+
+/* ── LAYOUT ── */
+.app{display:grid;grid-template-rows:auto 1fr;min-height:100vh}
+
+/* ── NAV ── */
+.nav{background:var(--white);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:200;padding:0 2rem}
+.nav-inner{max-width:1400px;margin:0 auto;height:64px;display:flex;align-items:center;gap:2rem}
+.nav-logo{font-family:'Unbounded',sans-serif;font-size:1rem;font-weight:700;color:var(--ink);text-decoration:none;display:flex;align-items:center;gap:.5rem;white-space:nowrap}
+.nav-logo-dot{width:8px;height:8px;background:var(--blue);border-radius:50%;flex-shrink:0}
+.nav-tabs{display:flex;gap:.25rem;flex:1;overflow-x:auto}
+.nav-tab{padding:.5rem 1rem;border-radius:8px;font-size:.875rem;font-weight:500;color:var(--ink-60);background:none;border:none;cursor:pointer;white-space:nowrap;transition:all .2s}
+.nav-tab:hover{color:var(--ink);background:var(--bg)}
+.nav-tab.active{color:var(--blue);background:var(--blue-light)}
+.nav-actions{display:flex;gap:.75rem;align-items:center;margin-left:auto}
+.btn{padding:.5rem 1.25rem;border-radius:8px;font-family:'Manrope',sans-serif;font-size:.875rem;font-weight:600;cursor:pointer;border:none;transition:all .2s;white-space:nowrap}
+.btn-outline{background:none;border:1.5px solid var(--border-strong);color:var(--ink)}
+.btn-outline:hover{border-color:var(--blue);color:var(--blue)}
+.btn-primary{background:var(--blue);color:#fff;box-shadow:0 2px 12px rgba(47,128,237,.35)}
+.btn-primary:hover{background:var(--blue-dark);transform:translateY(-1px);box-shadow:0 4px 18px rgba(47,128,237,.45)}
+.btn-green{background:var(--green);color:#fff}
+.btn-green:hover{background:#219150}
+
+/* ── PAGES ── */
+.page{display:none}
+.page.active{display:block}
+
+/* ── HERO ── */
+.hero{background:linear-gradient(135deg,#0F1923 0%,#1a2a3a 100%);padding:4rem 2rem;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 60% 80% at 70% 50%,rgba(47,128,237,.18),transparent);pointer-events:none}
+.hero-grid{max-width:1400px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:4rem;align-items:center}
+.hero-tag{display:inline-flex;align-items:center;gap:.5rem;background:rgba(47,128,237,.2);border:1px solid rgba(47,128,237,.4);color:#7bb8f7;padding:.3rem .9rem;border-radius:2rem;font-size:.78rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin-bottom:1.5rem}
+.hero h1{font-family:'Unbounded',sans-serif;font-size:clamp(1.8rem,3.5vw,2.8rem);color:#fff;line-height:1.15;margin-bottom:1.25rem;font-weight:700}
+.hero h1 span{color:var(--blue)}
+.hero-sub{color:rgba(255,255,255,.6);font-size:1.05rem;line-height:1.7;margin-bottom:2.5rem;font-weight:300}
+.hero-stats{display:flex;gap:2.5rem}
+.hero-stat-num{font-family:'Unbounded',sans-serif;font-size:1.6rem;color:#fff;font-weight:700}
+.hero-stat-label{font-size:.8rem;color:rgba(255,255,255,.45);margin-top:.2rem}
+.hero-search-card{background:rgba(255,255,255,.07);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.12);border-radius:var(--r-lg);padding:2rem}
+.search-card-title{color:#fff;font-size:1rem;font-weight:600;margin-bottom:1.5rem}
+.search-row{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem}
+.search-field{display:flex;flex-direction:column;gap:.4rem}
+.search-field label{font-size:.78rem;color:rgba(255,255,255,.55);font-weight:500}
+.search-field select,.search-field input{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);color:#fff;padding:.65rem .9rem;border-radius:8px;font-family:'Manrope',sans-serif;font-size:.875rem;outline:none;transition:border-color .2s;-webkit-appearance:none}
+.search-field select:focus,.search-field input:focus{border-color:rgba(47,128,237,.6)}
+.search-field select option{background:#1a2a3a;color:#fff}
+
+/* ── CATALOG PAGE ── */
+.catalog-layout{max-width:1400px;margin:0 auto;padding:2rem;display:grid;grid-template-columns:280px 1fr;gap:1.75rem;align-items:start}
+
+/* ── FILTERS ── */
+.filters-panel{background:var(--white);border-radius:var(--r-lg);border:1px solid var(--border);padding:1.5rem;position:sticky;top:80px}
+.filters-title{font-size:.875rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-60);margin-bottom:1.5rem}
+.filter-group{margin-bottom:1.5rem}
+.filter-label{font-size:.82rem;font-weight:600;color:var(--ink);margin-bottom:.75rem}
+.filter-options{display:flex;flex-wrap:wrap;gap:.4rem}
+.filter-chip{padding:.35rem .8rem;border-radius:6px;font-size:.8rem;font-weight:500;color:var(--ink-60);border:1.5px solid var(--border);background:none;cursor:pointer;transition:all .2s}
+.filter-chip:hover{border-color:var(--blue);color:var(--blue)}
+.filter-chip.active{border-color:var(--blue);color:var(--blue);background:var(--blue-light)}
+.range-row{display:flex;gap:.5rem;align-items:center}
+.range-input{width:100%;padding:.5rem .75rem;border:1.5px solid var(--border);border-radius:8px;font-family:'Manrope',sans-serif;font-size:.82rem;color:var(--ink);outline:none;transition:border-color .2s}
+.range-input:focus{border-color:var(--blue)}
+.range-sep{color:var(--ink-30);font-size:.85rem;flex-shrink:0}
+.filter-reset{width:100%;margin-top:1.5rem;padding:.6rem;border-radius:8px;background:none;border:1.5px solid var(--border);font-family:'Manrope',sans-serif;font-size:.82rem;font-weight:600;color:var(--ink-60);cursor:pointer;transition:all .2s}
+.filter-reset:hover{border-color:var(--red);color:var(--red)}
+
+/* ── CATALOG GRID ── */
+.catalog-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:.75rem}
+.catalog-count{font-size:.875rem;color:var(--ink-60)}
+.catalog-count strong{color:var(--ink);font-weight:700}
+.sort-row{display:flex;gap:.5rem;align-items:center}
+.sort-label{font-size:.82rem;color:var(--ink-60)}
+.sort-select{padding:.4rem .75rem;border:1.5px solid var(--border);border-radius:8px;font-family:'Manrope',sans-serif;font-size:.82rem;color:var(--ink);background:var(--white);outline:none;cursor:pointer}
+.sort-select:focus{border-color:var(--blue)}
+.properties-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1.25rem}
+
+/* ── PROPERTY CARD ── */
+.prop-card{background:var(--white);border-radius:var(--r-lg);border:1px solid var(--border);overflow:hidden;transition:all .25s;cursor:pointer}
+.prop-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg);border-color:transparent}
+.prop-img{width:100%;height:200px;object-fit:cover;background:linear-gradient(135deg,#dce8f5,#b8d4ee);position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.prop-img-placeholder{font-size:3rem;opacity:.35}
+.prop-badges{position:absolute;top:.75rem;left:.75rem;display:flex;gap:.4rem;flex-wrap:wrap}
+.badge{padding:.2rem .6rem;border-radius:5px;font-size:.72rem;font-weight:700;letter-spacing:.04em}
+.badge-blue{background:var(--blue);color:#fff}
+.badge-green{background:var(--green);color:#fff}
+.badge-orange{background:var(--orange);color:#fff}
+.badge-gray{background:rgba(0,0,0,.5);color:#fff}
+.prop-fav{position:absolute;top:.75rem;right:.75rem;width:32px;height:32px;background:rgba(255,255,255,.9);border-radius:50%;display:flex;align-items:center;justify-content:center;border:none;cursor:pointer;font-size:1rem;transition:all .2s}
+.prop-fav:hover{background:#fff;transform:scale(1.1)}
+.prop-fav.active{color:var(--red)}
+.prop-body{padding:1.25rem}
+.prop-district{font-size:.75rem;color:var(--ink-60);font-weight:500;margin-bottom:.35rem;text-transform:uppercase;letter-spacing:.05em}
+.prop-name{font-family:'Unbounded',sans-serif;font-size:.95rem;font-weight:700;color:var(--ink);margin-bottom:.25rem;line-height:1.3}
+.prop-dev{font-size:.8rem;color:var(--ink-60);margin-bottom:.9rem}
+.prop-price{font-size:1.1rem;font-weight:800;color:var(--blue);margin-bottom:.75rem}
+.prop-price span{font-size:.75rem;font-weight:500;color:var(--ink-60)}
+.prop-meta{display:flex;gap:1rem;flex-wrap:wrap}
+.prop-meta-item{display:flex;align-items:center;gap:.3rem;font-size:.78rem;color:var(--ink-60)}
+.prop-footer{padding:.75rem 1.25rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.prop-deadline{font-size:.78rem;color:var(--ink-60)}
+.prop-deadline strong{color:var(--ink)}
+.prop-roi{font-size:.78rem;font-weight:700}
+.prop-roi.high{color:var(--green)}
+.prop-roi.mid{color:var(--orange)}
+.prop-roi.low{color:var(--red)}
+
+/* ── PROPERTY DETAIL ── */
+.detail-wrap{max-width:1100px;margin:0 auto;padding:2rem}
+.detail-back{display:flex;align-items:center;gap:.5rem;font-size:.875rem;color:var(--ink-60);background:none;border:none;cursor:pointer;padding:.5rem 0;margin-bottom:1.5rem;font-family:'Manrope',sans-serif;font-weight:500;transition:color .2s}
+.detail-back:hover{color:var(--blue)}
+.detail-grid{display:grid;grid-template-columns:1fr 380px;gap:2rem;align-items:start}
+.detail-main{}
+.detail-gallery{border-radius:var(--r-lg);overflow:hidden;background:linear-gradient(135deg,#dce8f5,#a8c8e8);height:420px;display:flex;align-items:center;justify-content:center;margin-bottom:1.5rem;font-size:5rem;opacity:.4;position:relative}
+.detail-gallery-label{position:absolute;bottom:1rem;left:1rem;font-size:.78rem;background:rgba(0,0,0,.5);color:#fff;padding:.3rem .7rem;border-radius:6px}
+.detail-header{margin-bottom:1.5rem}
+.detail-district{font-size:.78rem;color:var(--blue);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.5rem}
+.detail-name{font-family:'Unbounded',sans-serif;font-size:1.8rem;font-weight:700;line-height:1.2;margin-bottom:.5rem}
+.detail-dev{font-size:.9rem;color:var(--ink-60);margin-bottom:1rem}
+.detail-badges{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.5rem}
+.detail-desc{font-size:.95rem;line-height:1.75;color:var(--ink-60);margin-bottom:2rem}
+.section-title{font-size:1rem;font-weight:700;margin-bottom:1rem;display:flex;align-items:center;gap:.5rem}
+.section-title::before{content:'';width:3px;height:1rem;background:var(--blue);border-radius:2px}
+.layouts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.75rem;margin-bottom:2rem}
+.layout-card{border:1.5px solid var(--border);border-radius:var(--r);padding:.9rem;text-align:center;cursor:pointer;transition:all .2s}
+.layout-card:hover,.layout-card.active{border-color:var(--blue);background:var(--blue-light)}
+.layout-rooms{font-family:'Unbounded',sans-serif;font-size:1.1rem;font-weight:700;color:var(--ink);margin-bottom:.25rem}
+.layout-area{font-size:.78rem;color:var(--ink-60);margin-bottom:.25rem}
+.layout-price{font-size:.82rem;font-weight:700;color:var(--blue)}
+
+/* ── SIDEBAR CARD ── */
+.detail-sidebar{}
+.sidebar-card{background:var(--white);border-radius:var(--r-lg);border:1px solid var(--border);padding:1.75rem;position:sticky;top:80px}
+.sidebar-price{font-family:'Unbounded',sans-serif;font-size:1.5rem;font-weight:700;color:var(--ink);margin-bottom:.25rem}
+.sidebar-price-sub{font-size:.82rem;color:var(--ink-60);margin-bottom:1.5rem}
+.sidebar-row{display:flex;justify-content:space-between;align-items:center;padding:.6rem 0;border-bottom:1px solid var(--border);font-size:.875rem}
+.sidebar-row:last-of-type{border-bottom:none}
+.sidebar-row-label{color:var(--ink-60)}
+.sidebar-row-value{font-weight:600;color:var(--ink)}
+.sidebar-actions{display:flex;flex-direction:column;gap:.75rem;margin-top:1.5rem}
+.roi-badge{display:flex;align-items:center;gap:.75rem;padding:1rem;border-radius:var(--r);background:var(--green-light);border:1px solid rgba(39,174,96,.2);margin-top:1.25rem}
+.roi-icon{font-size:1.5rem}
+.roi-text-top{font-size:.78rem;color:var(--green);font-weight:600}
+.roi-text-bottom{font-size:.95rem;font-weight:700;color:var(--green)}
+
+/* ── CALCULATOR ── */
+.calc-wrap{max-width:900px;margin:0 auto;padding:2rem}
+.calc-hero{background:linear-gradient(135deg,#0F1923,#1a2f47);border-radius:var(--r-lg);padding:2.5rem;color:#fff;margin-bottom:2rem;position:relative;overflow:hidden}
+.calc-hero::after{content:'📊';position:absolute;right:2rem;top:50%;transform:translateY(-50%);font-size:5rem;opacity:.15}
+.calc-hero h2{font-family:'Unbounded',sans-serif;font-size:1.5rem;margin-bottom:.5rem}
+.calc-hero p{color:rgba(255,255,255,.6);font-size:.9rem}
+.calc-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+.calc-card{background:var(--white);border-radius:var(--r-lg);border:1px solid var(--border);padding:1.75rem}
+.calc-card-title{font-size:.875rem;font-weight:700;color:var(--ink-60);text-transform:uppercase;letter-spacing:.08em;margin-bottom:1.5rem}
+.calc-field{margin-bottom:1.25rem}
+.calc-field label{display:block;font-size:.82rem;font-weight:600;color:var(--ink);margin-bottom:.4rem}
+.calc-field input,.calc-field select{width:100%;padding:.7rem 1rem;border:1.5px solid var(--border);border-radius:8px;font-family:'Manrope',sans-serif;font-size:.9rem;color:var(--ink);outline:none;transition:border-color .2s}
+.calc-field input:focus,.calc-field select:focus{border-color:var(--blue)}
+.calc-field .hint{font-size:.75rem;color:var(--ink-30);margin-top:.3rem}
+.calc-radio-group{display:flex;gap:.5rem}
+.calc-radio{flex:1;border:1.5px solid var(--border);border-radius:8px;padding:.5rem .75rem;text-align:center;font-size:.82rem;font-weight:500;cursor:pointer;transition:all .2s;color:var(--ink-60)}
+.calc-radio.active{border-color:var(--blue);background:var(--blue-light);color:var(--blue)}
+.calc-results{background:var(--white);border-radius:var(--r-lg);border:1px solid var(--border);padding:1.75rem;margin-top:1.5rem}
+.calc-results-title{font-size:1rem;font-weight:700;margin-bottom:1.5rem;display:flex;align-items:center;gap:.5rem}
+.results-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.5rem}
+.result-item{background:var(--bg);border-radius:var(--r);padding:1.25rem;text-align:center}
+.result-num{font-family:'Unbounded',sans-serif;font-size:1.5rem;font-weight:700;margin-bottom:.3rem}
+.result-num.good{color:var(--green)}
+.result-num.mid{color:var(--orange)}
+.result-num.bad{color:var(--red)}
+.result-label{font-size:.75rem;color:var(--ink-60);line-height:1.4}
+.verdict-bar{border-radius:var(--r);padding:1.25rem;display:flex;align-items:center;gap:1rem}
+.verdict-bar.high{background:var(--green-light);border:1px solid rgba(39,174,96,.25)}
+.verdict-bar.mid{background:#FFF8EC;border:1px solid rgba(242,153,74,.25)}
+.verdict-bar.low{background:#FFF3F3;border:1px solid rgba(235,87,87,.25)}
+.verdict-icon{font-size:2rem}
+.verdict-title{font-weight:700;font-size:1rem}
+.verdict-title.high{color:var(--green)}
+.verdict-title.mid{color:var(--orange)}
+.verdict-title.low{color:var(--red)}
+.verdict-desc{font-size:.82rem;color:var(--ink-60);margin-top:.2rem}
+
+/* ── AI CHAT ── */
+.chat-wrap{max-width:900px;margin:0 auto;padding:2rem;display:flex;flex-direction:column;height:calc(100vh - 64px)}
+.chat-header{background:var(--white);border-radius:var(--r-lg);border:1px solid var(--border);padding:1.25rem 1.75rem;display:flex;align-items:center;gap:1rem;margin-bottom:1rem;flex-shrink:0}
+.chat-avatar{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--blue),#7bb8f7);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0}
+.chat-header-info{}
+.chat-header-name{font-weight:700;font-size:.95rem;margin-bottom:.15rem}
+.chat-header-status{font-size:.78rem;color:var(--green);display:flex;align-items:center;gap:.3rem}
+.chat-header-status::before{content:'';width:6px;height:6px;background:var(--green);border-radius:50%;flex-shrink:0}
+.chat-messages{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:1rem;padding:.5rem 0;min-height:0}
+.msg{display:flex;gap:.75rem;max-width:80%;animation:msgIn .3s ease-out}
+.msg.user{align-self:flex-end;flex-direction:row-reverse}
+@keyframes msgIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.msg-avatar{width:32px;height:32px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.9rem}
+.msg-avatar.bot{background:linear-gradient(135deg,var(--blue),#7bb8f7)}
+.msg-avatar.user{background:linear-gradient(135deg,#667eea,#764ba2)}
+.msg-bubble{padding:.85rem 1.1rem;border-radius:var(--r);font-size:.9rem;line-height:1.65}
+.msg.bot .msg-bubble{background:var(--white);border:1px solid var(--border);color:var(--ink);border-bottom-left-radius:4px}
+.msg.user .msg-bubble{background:var(--blue);color:#fff;border-bottom-right-radius:4px}
+.msg-time{font-size:.7rem;color:var(--ink-30);margin-top:.3rem;text-align:right}
+.msg.bot .msg-time{text-align:left}
+.chat-suggestions{display:flex;flex-wrap:wrap;gap:.5rem;margin:.5rem 0;flex-shrink:0}
+.suggestion-chip{padding:.4rem .85rem;border-radius:2rem;border:1.5px solid var(--border);font-size:.8rem;font-weight:500;color:var(--ink-60);background:var(--white);cursor:pointer;transition:all .2s}
+.suggestion-chip:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-light)}
+.chat-input-row{display:flex;gap:.75rem;background:var(--white);border:1px solid var(--border);border-radius:var(--r-lg);padding:.75rem;flex-shrink:0}
+.chat-input{flex:1;border:none;outline:none;font-family:'Manrope',sans-serif;font-size:.9rem;color:var(--ink);resize:none;min-height:24px;max-height:120px;overflow-y:auto}
+.chat-input::placeholder{color:var(--ink-30)}
+.chat-send{background:var(--blue);color:#fff;border:none;width:40px;height:40px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;transition:all .2s}
+.chat-send:hover{background:var(--blue-dark)}
+.chat-send:disabled{opacity:.4;cursor:default}
+.typing-indicator{display:flex;gap:4px;padding:.75rem 1rem}
+.typing-dot{width:7px;height:7px;border-radius:50%;background:var(--ink-30);animation:typingDot 1.2s ease-in-out infinite}
+.typing-dot:nth-child(2){animation-delay:.2s}
+.typing-dot:nth-child(3){animation-delay:.4s}
+@keyframes typingDot{0%,80%,100%{transform:scale(.7);opacity:.5}40%{transform:scale(1);opacity:1}}
+
+/* ── MAP PAGE ── */
+.map-page{height:calc(100vh - 64px);display:grid;grid-template-columns:360px 1fr}
+.map-list{overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.75rem;background:var(--bg)}
+.map-card{background:var(--white);border-radius:var(--r);border:1px solid var(--border);padding:1rem;cursor:pointer;transition:all .2s}
+.map-card:hover,.map-card.selected{border-color:var(--blue);box-shadow:var(--shadow)}
+.map-card-name{font-weight:700;font-size:.9rem;margin-bottom:.25rem}
+.map-card-meta{font-size:.78rem;color:var(--ink-60);margin-bottom:.5rem}
+.map-card-price{font-size:.9rem;font-weight:700;color:var(--blue)}
+.map-area{background:linear-gradient(135deg,#dce8f5,#b8cfe8);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.map-placeholder{text-align:center;color:var(--ink-60)}
+.map-placeholder-icon{font-size:4rem;margin-bottom:1rem;display:block}
+.map-placeholder p{font-size:.9rem}
+.map-placeholder small{font-size:.78rem;opacity:.6}
+
+/* ── FAVORITES ── */
+.favs-wrap{max-width:1200px;margin:0 auto;padding:2rem}
+.favs-empty{text-align:center;padding:6rem 2rem}
+.favs-empty-icon{font-size:4rem;margin-bottom:1.5rem;display:block}
+.favs-empty h3{font-size:1.2rem;font-weight:700;margin-bottom:.75rem}
+.favs-empty p{color:var(--ink-60);font-size:.9rem}
+
+/* ── TOAST ── */
+.toast-container{position:fixed;bottom:2rem;right:2rem;z-index:999;display:flex;flex-direction:column;gap:.5rem}
+.toast{background:var(--ink);color:#fff;padding:.75rem 1.25rem;border-radius:10px;font-size:.85rem;font-weight:500;box-shadow:var(--shadow-lg);animation:toastIn .3s ease-out;display:flex;align-items:center;gap:.5rem}
+@keyframes toastIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+
+/* ── RESPONSIVE ── */
+@media(max-width:900px){
+  .hero-grid{grid-template-columns:1fr;gap:2rem}
+  .catalog-layout{grid-template-columns:1fr}
+  .filters-panel{position:static}
+  .detail-grid{grid-template-columns:1fr}
+  .calc-grid{grid-template-columns:1fr}
+  .results-grid{grid-template-columns:1fr 1fr}
+  .map-page{grid-template-columns:1fr;height:auto}
+  .map-area{height:300px}
+}
+@media(max-width:600px){
+  .nav-inner{padding:0 1rem;gap:1rem}
+  .hero{padding:2rem 1rem}
+  .hero-stats{gap:1.5rem}
+  .catalog-layout,.detail-wrap,.calc-wrap,.chat-wrap,.favs-wrap{padding:1rem}
+  .results-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="nav-logo" href="#"><span class="nav-logo-dot"></span>Новостройки Уфы</a>
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="showPage('catalog')">🏗 Каталог</button>
+      <button class="nav-tab" onclick="showPage('map')">🗺 Карта</button>
+      <button class="nav-tab" onclick="showPage('calculator')">📊 Калькулятор</button>
+      <button class="nav-tab" onclick="showPage('chat')">🤖 AI-помощник</button>
+      <button class="nav-tab" onclick="showPage('favorites')">❤️ Избранное</button>
+    </div>
+    <div class="nav-actions">
+      <button class="btn btn-outline" onclick="showToast('Вход в разработке 🔧')">Войти</button>
+      <button class="btn btn-primary" onclick="showToast('Регистрация в разработке 🔧')">Регистрация</button>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════ CATALOG ═══════════════════════════ -->
+<div id="page-catalog" class="page active">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-grid">
+      <div>
+        <div class="hero-tag">🏙 Уфа · 2025</div>
+        <h1>Найди свою<br><span>новостройку</span><br>в Уфе</h1>
+        <p class="hero-sub">Все жилые комплексы города в одном месте. Удобная фильтрация, честная аналитика и AI-консультант для умного выбора.</p>
+        <div class="hero-stats">
+          <div><div class="hero-stat-num">42</div><div class="hero-stat-label">ЖК в продаже</div></div>
+          <div><div class="hero-stat-num">18</div><div class="hero-stat-label">Застройщиков</div></div>
+          <div><div class="hero-stat-num">8 500+</div><div class="hero-stat-label">Квартир</div></div>
+        </div>
+      </div>
+      <div class="hero-search-card">
+        <div class="search-card-title">Быстрый поиск</div>
+        <div class="search-row">
+          <div class="search-field">
+            <label>Район</label>
+            <select id="hs-district"><option value="">Все районы</option><option>Кировский</option><option>Ленинский</option><option>Октябрьский</option><option>Орджоникидзевский</option><option>Советский</option></select>
+          </div>
+          <div class="search-field">
+            <label>Комнат</label>
+            <select id="hs-rooms"><option value="">Любое</option><option>Студия</option><option>1</option><option>2</option><option>3+</option></select>
+          </div>
+        </div>
+        <div class="search-row">
+          <div class="search-field">
+            <label>Цена от, ₽</label>
+            <input type="number" id="hs-price-min" placeholder="3 000 000"/>
+          </div>
+          <div class="search-field">
+            <label>Цена до, ₽</label>
+            <input type="number" id="hs-price-max" placeholder="12 000 000"/>
+          </div>
+        </div>
+        <button class="btn btn-primary" style="width:100%;margin-top:.25rem;padding:.75rem" onclick="applyHeroSearch()">🔍 Найти квартиры</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Catalog -->
+  <div class="catalog-layout">
+
+    <!-- Filters -->
+    <aside class="filters-panel">
+      <div class="filters-title">Фильтры</div>
+
+      <div class="filter-group">
+        <div class="filter-label">Район</div>
+        <div class="filter-options" id="filter-districts">
+          <button class="filter-chip active" data-val="">Все</button>
+          <button class="filter-chip" data-val="Кировский">Кировский</button>
+          <button class="filter-chip" data-val="Ленинский">Ленинский</button>
+          <button class="filter-chip" data-val="Октябрьский">Октябрьский</button>
+          <button class="filter-chip" data-val="Орджоникидзевский">Орджоникидзевский</button>
+          <button class="filter-chip" data-val="Советский">Советский</button>
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <div class="filter-label">Комнатность</div>
+        <div class="filter-options" id="filter-rooms">
+          <button class="filter-chip active" data-val="">Все</button>
+          <button class="filter-chip" data-val="studio">Студия</button>
+          <button class="filter-chip" data-val="1">1-комн.</button>
+          <button class="filter-chip" data-val="2">2-комн.</button>
+          <button class="filter-chip" data-val="3">3-комн.</button>
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <div class="filter-label">Срок сдачи</div>
+        <div class="filter-options" id="filter-deadline">
+          <button class="filter-chip active" data-val="">Все</button>
+          <button class="filter-chip" data-val="2025">2025</button>
+          <button class="filter-chip" data-val="2026">2026</button>
+          <button class="filter-chip" data-val="2027">2027+</button>
+          <button class="filter-chip" data-val="ready">Сдан</button>
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <div class="filter-label">Цена (₽)</div>
+        <div class="range-row">
+          <input class="range-input" type="number" id="f-price-min" placeholder="от 3 млн"/>
+          <span class="range-sep">—</span>
+          <input class="range-input" type="number" id="f-price-max" placeholder="до 15 млн"/>
+        </div>
+      </div>
+
+      <button class="filter-reset" onclick="resetFilters()">✕ Сбросить фильтры</button>
+    </aside>
+
+    <!-- Grid -->
+    <div>
+      <div class="catalog-header">
+        <div class="catalog-count">Найдено: <strong id="count-label">12</strong> ЖК</div>
+        <div class="sort-row">
+          <span class="sort-label">Сортировка:</span>
+          <select class="sort-select" id="sort-select" onchange="renderCards()">
+            <option value="popular">По популярности</option>
+            <option value="price-asc">Цена ↑</option>
+            <option value="price-desc">Цена ↓</option>
+            <option value="deadline">По сроку сдачи</option>
+          </select>
+        </div>
+      </div>
+      <div class="properties-grid" id="properties-grid"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════ DETAIL ═══════════════════════════ -->
+<div id="page-detail" class="page">
+  <div class="detail-wrap">
+    <button class="detail-back" onclick="showPage('catalog')">← Назад к каталогу</button>
+    <div class="detail-grid">
+      <div class="detail-main" id="detail-main"></div>
+      <div class="detail-sidebar" id="detail-sidebar"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ MAP ═══════════════════════════ -->
+<div id="page-map" class="page">
+  <div class="map-page">
+    <div class="map-list" id="map-list"></div>
+    <div class="map-area">
+      <div class="map-placeholder">
+        <span class="map-placeholder-icon">🗺</span>
+        <p><strong>Карта Уфы</strong></p>
+        <p>Подключите Яндекс.Карты API</p>
+        <small>YANDEX_MAPS_KEY в .env</small>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ CALCULATOR ═══════════════════════════ -->
+<div id="page-calculator" class="page">
+  <div class="calc-wrap">
+    <div class="calc-hero">
+      <h2>Инвестиционный калькулятор</h2>
+      <p>Рассчитайте реальную доходность и срок окупаемости квартиры</p>
+    </div>
+
+    <div class="calc-grid">
+      <div class="calc-card">
+        <div class="calc-card-title">🏠 Квартира</div>
+        <div class="calc-field">
+          <label>Стоимость квартиры (₽)</label>
+          <input type="number" id="c-price" value="5000000" oninput="calcInvestment()"/>
+        </div>
+        <div class="calc-field">
+          <label>Площадь (м²)</label>
+          <input type="number" id="c-area" value="45" oninput="calcInvestment()"/>
+        </div>
+        <div class="calc-field">
+          <label>Ремонт и мебель (₽)</label>
+          <input type="number" id="c-repair" value="600000" oninput="calcInvestment()"/>
+          <div class="hint">Учитывается в общей стоимости</div>
+        </div>
+      </div>
+
+      <div class="calc-card">
+        <div class="calc-card-title">💰 Аренда и расходы</div>
+        <div class="calc-field">
+          <label>Аренда в месяц (₽)</label>
+          <input type="number" id="c-rent" value="30000" oninput="calcInvestment()"/>
+        </div>
+        <div class="calc-field">
+          <label>Коммуналка / расходы в месяц (₽)</label>
+          <input type="number" id="c-expenses" value="5000" oninput="calcInvestment()"/>
+        </div>
+        <div class="calc-field">
+          <label>Налоговый режим</label>
+          <div class="calc-radio-group">
+            <div class="calc-radio active" id="tax-ndfl" onclick="setTax('ndfl')">13% НДФЛ</div>
+            <div class="calc-radio" id="tax-self" onclick="setTax('self')">4% самозанятый</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="calc-results" id="calc-results"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ AI CHAT ═══════════════════════════ -->
+<div id="page-chat" class="page">
+  <div class="chat-wrap">
+    <div class="chat-header">
+      <div class="chat-avatar">🤖</div>
+      <div class="chat-header-info">
+        <div class="chat-header-name">AI-консультант по недвижимости</div>
+        <div class="chat-header-status">Онлайн · знает все 12 ЖК Уфы</div>
+      </div>
+    </div>
+
+    <div class="chat-messages" id="chat-messages"></div>
+
+    <div class="chat-suggestions" id="chat-suggestions">
+      <button class="suggestion-chip" onclick="sendSuggestion('Какой ЖК самый выгодный для инвестиций?')">💰 Лучший для инвестиций</button>
+      <button class="suggestion-chip" onclick="sendSuggestion('Где купить квартиру для сдачи в аренду?')">🏠 Для аренды</button>
+      <button class="suggestion-chip" onclick="sendSuggestion('Покажи самые дешёвые новостройки')">💸 Дешёвые варианты</button>
+      <button class="suggestion-chip" onclick="sendSuggestion('Какой район Уфы лучше для жизни?')">📍 Лучший район</button>
+    </div>
+
+    <div class="chat-input-row">
+      <textarea class="chat-input" id="chat-input" placeholder="Спросите что-нибудь о новостройках Уфы..." rows="1" onkeydown="chatKeydown(event)" oninput="autoResize(this)"></textarea>
+      <button class="chat-send" id="chat-send-btn" onclick="sendChatMessage()">➤</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ FAVORITES ═══════════════════════════ -->
+<div id="page-favorites" class="page">
+  <div class="favs-wrap">
+    <div style="margin-bottom:1.5rem">
+      <h2 style="font-family:'Unbounded',sans-serif;font-size:1.3rem;font-weight:700">❤️ Избранное</h2>
+    </div>
+    <div id="favorites-grid" class="properties-grid"></div>
+    <div id="favorites-empty" class="favs-empty" style="display:none">
+      <span class="favs-empty-icon">🏠</span>
+      <h3>Нет избранных объектов</h3>
+      <p>Добавляйте ЖК в избранное, нажимая на ❤️ на карточке</p>
+    </div>
+  </div>
+</div>
+
+</div><!-- /app -->
+
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+// ═══════════════ DATA ═══════════════
+const PROPERTIES = [
+  {id:1,name:'ЖК «Ривьера Парк»',dev:'СК Мегаполис',district:'Кировский',deadline:'Q2 2025',deadlineYear:2025,priceFrom:4200000,priceTo:8900000,priceM2:95000,desc:'Премиальный жилой комплекс в самом сердце Кировского района. Авторская архитектура, закрытая территория, подземный паркинг и фитнес-центр. Река Белая в 5 минутах ходьбы.',rooms:['studio','1','2','3'],area:'от 28 до 92 м²',floors:24,roi:12.4,status:'ready',hot:true,emoji:'🏙'},
+  {id:2,name:'ЖК «Северная Звезда»',dev:'ГК Строй-Инвест',district:'Советский',deadline:'Q4 2025',deadlineYear:2025,priceFrom:3600000,priceTo:7200000,priceM2:82000,desc:'Современный жилой комплекс комфорт-класса. Развитая инфраструктура, детские площадки, озеленение. Собственный супермаркет и кофейня на первом этаже.',rooms:['1','2','3'],area:'от 38 до 85 м²',floors:18,roi:9.8,status:'строится',hot:false,emoji:'⭐'},
+  {id:3,name:'ЖК «Изумрудный Город»',dev:'БашСтрой',district:'Ленинский',deadline:'Q1 2026',deadlineYear:2026,priceFrom:5100000,priceTo:11500000,priceM2:110000,desc:'Элитный квартал с панорамным видом на Уфу. Три башни по 30 этажей, концептуальные планировки, коворкинг и ресторан на последнем этаже.',rooms:['1','2','3'],area:'от 42 до 110 м²',floors:30,roi:14.2,status:'строится',hot:true,emoji:'🟢'},
+  {id:4,name:'ЖК «Счастливый»',dev:'ГК Уфимский квартал',district:'Орджоникидзевский',deadline:'Q3 2025',deadlineYear:2025,priceFrom:2900000,priceTo:5800000,priceM2:68000,desc:'Доступное жильё эконом+ класса для молодых семей. Ипотека от 5,9%, сдача в чистовой отделке, рядом школа и детский сад.',rooms:['studio','1','2'],area:'от 25 до 72 м²',floors:16,roi:8.1,status:'строится',hot:false,emoji:'😊'},
+  {id:5,name:'ЖК «Мегаполис Sky»',dev:'СК Мегаполис',district:'Кировский',deadline:'Q2 2026',deadlineYear:2026,priceFrom:6300000,priceTo:14200000,priceM2:128000,desc:'Небоскрёб нового поколения. Умный дом в каждой квартире, видовые террасы, спа-комплекс и коворкинг. Лучший вид на слияние рек.',rooms:['1','2','3'],area:'от 48 до 120 м²',floors:42,roi:11.7,status:'строится',hot:true,emoji:'🚀'},
+  {id:6,name:'ЖК «Белая Речка»',dev:'ПромСтрой',district:'Ленинский',deadline:'Сдан',deadlineYear:2024,priceFrom:4500000,priceTo:9100000,priceM2:98000,desc:'Готовый жилой комплекс с отличной транспортной доступностью. Набережная в шаговой доступности. Квартиры с дизайнерским ремонтом.',rooms:['1','2','3'],area:'от 35 до 95 м²',floors:22,roi:13.5,status:'ready',hot:false,emoji:'🏞'},
+  {id:7,name:'ЖК «Уфимский квартал»',dev:'ГК Уфимский квартал',district:'Октябрьский',deadline:'Q4 2026',deadlineYear:2026,priceFrom:3200000,priceTo:6500000,priceM2:74000,desc:'Комфортный район с европейской планировкой дворов. Без машин во дворе, велодорожки, зелёные зоны. Идеально для семей с детьми.',rooms:['studio','1','2','3'],area:'от 28 до 88 м²',floors:20,roi:9.2,status:'строится',hot:false,emoji:'🌿'},
+  {id:8,name:'ЖК «Панорама»',dev:'БашСтрой',district:'Советский',deadline:'Q1 2027',deadlineYear:2027,priceFrom:5800000,priceTo:12000000,priceM2:115000,desc:'Жилой комплекс с панорамными окнами и видовыми квартирами. Закрытый двор, консьерж-сервис, фитнес-клуб с бассейном.',rooms:['1','2','3'],area:'от 45 до 105 м²',floors:28,roi:10.9,status:'строится',hot:true,emoji:'🌅'},
+  {id:9,name:'ЖК «Солнечный Уфа»',dev:'ПромСтрой',district:'Орджоникидзевский',deadline:'Q3 2026',deadlineYear:2026,priceFrom:2700000,priceTo:5200000,priceM2:63000,desc:'Бюджетный вариант с развитой инфраструктурой. Рядом торговый центр, две школы и станция скоростного трамвая.',rooms:['studio','1','2'],area:'от 24 до 68 м²',floors:14,roi:7.4,status:'строится',hot:false,emoji:'☀️'},
+  {id:10,name:'ЖК «Grand Plaza»',dev:'СК Мегаполис',district:'Кировский',deadline:'Q4 2025',deadlineYear:2025,priceFrom:7500000,priceTo:18000000,priceM2:145000,desc:'Ультра-премиальный комплекс в центре Уфы. Апартаменты с потолками 3,2 м, мраморные холлы, консьерж 24/7 и вертолётная площадка.',rooms:['2','3'],area:'от 55 до 130 м²',floors:35,roi:15.8,status:'строится',hot:true,emoji:'👑'},
+  {id:11,name:'ЖК «Лесной Квартал»',dev:'ГринСтрой',district:'Советский',deadline:'Q2 2027',deadlineYear:2027,priceFrom:4100000,priceTo:8300000,priceM2:89000,desc:'Экологичный жилой комплекс рядом с лесопарком. Деревянные детские площадки, огород на крыше, зарядки для электромобилей.',rooms:['1','2','3'],area:'от 38 до 94 м²',floors:16,roi:10.2,status:'строится',hot:false,emoji:'🌲'},
+  {id:12,name:'ЖК «Victory Park»',dev:'Строй-Инвест',district:'Октябрьский',deadline:'Сдан',deadlineYear:2023,priceFrom:5300000,priceTo:10500000,priceM2:104000,desc:'Готовый ЖК рядом с Парком Победы. Отличная транспортная доступность, пешая доступность до метро. Квартиры свободной планировки.',rooms:['studio','1','2','3'],area:'от 30 до 98 м²',floors:25,roi:12.8,status:'ready',hot:false,emoji:'🏆'},
+];
+
+let favorites = JSON.parse(localStorage.getItem('ufa_favs') || '[]');
+let activeFilters = {district:'',rooms:'',deadline:'',priceMin:'',priceMax:''};
+let taxMode = 'ndfl'; // 'ndfl' | 'self'
+let chatHistory = [];
+
+// ═══════════════ PAGES ═══════════════
+function showPage(page){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  const tabs=['catalog','map','calculator','chat','favorites'];
+  const idx=tabs.indexOf(page);
+  if(idx>=0) document.querySelectorAll('.nav-tab')[idx].classList.add('active');
+  if(page==='catalog') renderCards();
+  if(page==='map') renderMapList();
+  if(page==='calculator') calcInvestment();
+  if(page==='chat') initChat();
+  if(page==='favorites') renderFavorites();
+  window.scrollTo({top:0});
+}
+
+// ═══════════════ FILTERS ═══════════════
+function setupFilterChips(){
+  ['filter-districts','filter-rooms','filter-deadline'].forEach(id=>{
+    document.getElementById(id).querySelectorAll('.filter-chip').forEach(chip=>{
+      chip.onclick=()=>{
+        chip.parentElement.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active'));
+        chip.classList.add('active');
+        if(id==='filter-districts') activeFilters.district=chip.dataset.val;
+        if(id==='filter-rooms') activeFilters.rooms=chip.dataset.val;
+        if(id==='filter-deadline') activeFilters.deadline=chip.dataset.val;
+        renderCards();
+      };
+    });
+  });
+  document.getElementById('f-price-min').oninput=e=>{activeFilters.priceMin=e.target.value;renderCards()};
+  document.getElementById('f-price-max').oninput=e=>{activeFilters.priceMax=e.target.value;renderCards()};
+}
+
+function resetFilters(){
+  activeFilters={district:'',rooms:'',deadline:'',priceMin:'',priceMax:''};
+  document.querySelectorAll('.filter-chip').forEach(c=>{
+    c.classList.remove('active');
+    if(c.dataset.val==='') c.classList.add('active');
+  });
+  document.getElementById('f-price-min').value='';
+  document.getElementById('f-price-max').value='';
+  renderCards();
+}
+
+function applyHeroSearch(){
+  activeFilters.district=document.getElementById('hs-district').value;
+  activeFilters.priceMin=document.getElementById('hs-price-min').value;
+  activeFilters.priceMax=document.getElementById('hs-price-max').value;
+  showPage('catalog');
+  renderCards();
+}
+
+function getFiltered(){
+  let list=[...PROPERTIES];
+  if(activeFilters.district) list=list.filter(p=>p.district===activeFilters.district);
+  if(activeFilters.rooms) list=list.filter(p=>p.rooms.includes(activeFilters.rooms));
+  if(activeFilters.deadline){
+    if(activeFilters.deadline==='ready') list=list.filter(p=>p.status==='ready');
+    else list=list.filter(p=>String(p.deadlineYear)===activeFilters.deadline||(activeFilters.deadline==='2027'&&p.deadlineYear>=2027));
+  }
+  if(activeFilters.priceMin) list=list.filter(p=>p.priceTo>=Number(activeFilters.priceMin));
+  if(activeFilters.priceMax) list=list.filter(p=>p.priceFrom<=Number(activeFilters.priceMax));
+  const sort=document.getElementById('sort-select').value;
+  if(sort==='price-asc') list.sort((a,b)=>a.priceFrom-b.priceFrom);
+  if(sort==='price-desc') list.sort((a,b)=>b.priceFrom-a.priceFrom);
+  if(sort==='deadline') list.sort((a,b)=>a.deadlineYear-b.deadlineYear);
+  if(sort==='popular') list.sort((a,b)=>(b.hot?1:0)-(a.hot?1:0));
+  return list;
+}
+
+// ═══════════════ CARDS ═══════════════
+function roiClass(roi){return roi>=12?'high':roi>=9?'mid':'low'}
+function roiLabel(roi){if(roi>=12)return'🟢 Высокая доходность';if(roi>=9)return'🟡 Средняя доходность';return'🔴 Низкая доходность';}
+function fmtPrice(n){return(n/1e6).toFixed(1)+' млн ₽'}
+
+function renderCard(p,container,forFav=false){
+  const isFav=favorites.includes(p.id);
+  const div=document.createElement('div');
+  div.className='prop-card';
+  div.innerHTML=`
+    <div class="prop-img" style="background:linear-gradient(135deg,${randGrad(p.id)})">
+      <div class="prop-img-placeholder">${p.emoji}</div>
+      <div class="prop-badges">
+        ${p.hot?'<span class="badge badge-orange">🔥 Горячее</span>':''}
+        ${p.status==='ready'?'<span class="badge badge-green">✓ Сдан</span>':'<span class="badge badge-blue">Строится</span>'}
+      </div>
+      <button class="prop-fav ${isFav?'active':''}" onclick="toggleFav(event,${p.id})">${isFav?'❤️':'🤍'}</button>
+    </div>
+    <div class="prop-body">
+      <div class="prop-district">${p.district} район</div>
+      <div class="prop-name">${p.name}</div>
+      <div class="prop-dev">${p.dev} · ${p.floors} этажей · ${p.area}</div>
+      <div class="prop-price">${fmtPrice(p.priceFrom)} <span>– ${fmtPrice(p.priceTo)}</span></div>
+      <div class="prop-meta">
+        <span class="prop-meta-item">📐 ${p.priceM2.toLocaleString()} ₽/м²</span>
+        <span class="prop-meta-item">🏠 ${p.rooms.join(', ')}</span>
+      </div>
+    </div>
+    <div class="prop-footer">
+      <div class="prop-deadline">Сдача: <strong>${p.deadline}</strong></div>
+      <div class="prop-roi ${roiClass(p.roi)}">${p.roi}% год.</div>
+    </div>`;
+  div.querySelector('.prop-body').onclick=()=>openDetail(p.id);
+  div.querySelector('.prop-footer').onclick=()=>openDetail(p.id);
+  container.appendChild(div);
+}
+
+function renderCards(){
+  const grid=document.getElementById('properties-grid');
+  grid.innerHTML='';
+  const filtered=getFiltered();
+  document.getElementById('count-label').textContent=filtered.length;
+  filtered.forEach(p=>renderCard(p,grid));
+}
+
+function renderFavorites(){
+  const grid=document.getElementById('favorites-grid');
+  const empty=document.getElementById('favorites-empty');
+  grid.innerHTML='';
+  const favProps=PROPERTIES.filter(p=>favorites.includes(p.id));
+  if(favProps.length===0){grid.style.display='none';empty.style.display='block';}
+  else{grid.style.display='grid';empty.style.display='none';favProps.forEach(p=>renderCard(p,grid,true));}
+}
+
+function toggleFav(e,id){
+  e.stopPropagation();
+  const btn=e.currentTarget;
+  if(favorites.includes(id)){
+    favorites=favorites.filter(f=>f!==id);
+    btn.textContent='🤍';btn.classList.remove('active');
+    showToast('Удалено из избранного');
+  } else {
+    favorites.push(id);
+    btn.textContent='❤️';btn.classList.add('active');
+    showToast('Добавлено в избранное ❤️');
+  }
+  localStorage.setItem('ufa_favs',JSON.stringify(favorites));
+}
+
+function randGrad(seed){
+  const grads=[
+    '#d0e8ff,#a8ccee','#d5f0e5,#a8d8c0','#fde8d0,#f5c4a0',
+    '#e8d5f5,#c9a8e5','#d0f0ff,#a0d8ef','#ffe8d5,#f5c8a0',
+  ];
+  return grads[seed%grads.length];
+}
+
+// ═══════════════ DETAIL ═══════════════
+function openDetail(id){
+  const p=PROPERTIES.find(x=>x.id===id);
+  const isFav=favorites.includes(id);
+  document.getElementById('detail-main').innerHTML=`
+    <div class="detail-gallery" style="background:linear-gradient(135deg,${randGrad(p.id)})">
+      <span style="font-size:8rem;opacity:.3">${p.emoji}</span>
+      <div class="detail-gallery-label">📸 Фото появятся после подключения CMS</div>
+    </div>
+    <div class="detail-header">
+      <div class="detail-district">${p.district} район</div>
+      <div class="detail-name">${p.name}</div>
+      <div class="detail-dev">Застройщик: ${p.dev} · ${p.floors} этажей</div>
+      <div class="detail-badges">
+        ${p.hot?'<span class="badge badge-orange">🔥 Горячее предложение</span>':''}
+        ${p.status==='ready'?'<span class="badge badge-green">✓ Дом сдан</span>':'<span class="badge badge-blue">⚙️ Строится</span>'}
+        <span class="badge badge-gray">📐 ${p.area}</span>
+      </div>
+    </div>
+    <p class="detail-desc">${p.desc}</p>
+    <div class="section-title">Планировки и цены</div>
+    <div class="layouts-grid">
+      ${p.rooms.map(r=>`<div class="layout-card" onclick="openCalcFromDetail(${p.priceFrom})">
+        <div class="layout-rooms">${r==='studio'?'Студия':r+'-комн.'}</div>
+        <div class="layout-area">${r==='studio'?'25–35':'35–95'} м²</div>
+        <div class="layout-price">от ${fmtPrice(r==='studio'?p.priceFrom:p.priceFrom*1.2)}</div>
+      </div>`).join('')}
+    </div>
+  `;
+  document.getElementById('detail-sidebar').innerHTML=`
+    <div class="sidebar-card">
+      <div class="sidebar-price">${fmtPrice(p.priceFrom)}</div>
+      <div class="sidebar-price-sub">Стоимость от · ${p.priceM2.toLocaleString()} ₽/м²</div>
+      <div class="sidebar-row"><span class="sidebar-row-label">Район</span><span class="sidebar-row-value">${p.district}</span></div>
+      <div class="sidebar-row"><span class="sidebar-row-label">Срок сдачи</span><span class="sidebar-row-value">${p.deadline}</span></div>
+      <div class="sidebar-row"><span class="sidebar-row-label">Этажей</span><span class="sidebar-row-value">${p.floors}</span></div>
+      <div class="sidebar-row"><span class="sidebar-row-label">Площадь</span><span class="sidebar-row-value">${p.area}</span></div>
+      <div class="sidebar-row"><span class="sidebar-row-label">Застройщик</span><span class="sidebar-row-value">${p.dev}</span></div>
+      <div class="sidebar-actions">
+        <button class="btn btn-primary" style="width:100%;padding:.75rem" onclick="showToast('Звонок в разработке 📞')">📞 Позвонить</button>
+        <button class="btn btn-outline" style="width:100%;padding:.75rem" onclick="openCalcFromDetail(${p.priceFrom})">📊 Рассчитать выгодность</button>
+        <button class="btn btn-outline" style="width:100%;padding:.75rem;${isFav?'color:var(--red);border-color:var(--red)':''}" onclick="toggleFavDetail(${p.id},this)">
+          ${isFav?'❤️ В избранном':'🤍 В избранное'}
+        </button>
+      </div>
+      <div class="roi-badge">
+        <div class="roi-icon">📈</div>
+        <div>
+          <div class="roi-text-top">Доходность от аренды</div>
+          <div class="roi-text-bottom">${p.roi}% годовых</div>
+        </div>
+      </div>
+    </div>
+  `;
+  showPage('detail');
+}
+
+function toggleFavDetail(id,btn){
+  if(favorites.includes(id)){
+    favorites=favorites.filter(f=>f!==id);
+    btn.innerHTML='🤍 В избранное';btn.style.color='';btn.style.borderColor='';
+    showToast('Удалено из избранного');
+  } else {
+    favorites.push(id);
+    btn.innerHTML='❤️ В избранном';btn.style.color='var(--red)';btn.style.borderColor='var(--red)';
+    showToast('Добавлено в избранное ❤️');
+  }
+  localStorage.setItem('ufa_favs',JSON.stringify(favorites));
+}
+
+function openCalcFromDetail(price){
+  document.getElementById('c-price').value=price;
+  showPage('calculator');
+  calcInvestment();
+}
+
+// ═══════════════ MAP LIST ═══════════════
+function renderMapList(){
+  const list=document.getElementById('map-list');
+  list.innerHTML='';
+  PROPERTIES.forEach(p=>{
+    const div=document.createElement('div');
+    div.className='map-card';
+    div.innerHTML=`<div class="map-card-name">${p.emoji} ${p.name}</div>
+      <div class="map-card-meta">${p.district} · ${p.deadline}</div>
+      <div class="map-card-price">${fmtPrice(p.priceFrom)} – ${fmtPrice(p.priceTo)}</div>`;
+    div.onclick=()=>{
+      list.querySelectorAll('.map-card').forEach(c=>c.classList.remove('selected'));
+      div.classList.add('selected');
+      openDetail(p.id);
+    };
+    list.appendChild(div);
+  });
+}
+
+// ═══════════════ CALCULATOR ═══════════════
+function setTax(mode){
+  taxMode=mode;
+  document.getElementById('tax-ndfl').classList.toggle('active',mode==='ndfl');
+  document.getElementById('tax-self').classList.toggle('active',mode==='self');
+  calcInvestment();
+}
+
+function calcInvestment(){
+  const price=Number(document.getElementById('c-price').value)||5000000;
+  const repair=Number(document.getElementById('c-repair').value)||600000;
+  const rent=Number(document.getElementById('c-rent').value)||30000;
+  const expenses=Number(document.getElementById('c-expenses').value)||5000;
+  const taxRate=taxMode==='ndfl'?0.13:0.04;
+  const totalCost=price+repair;
+  const rentMonths=11; // 1 мес простой
+  const grossRent=rent*rentMonths;
+  const grossExpenses=expenses*12;
+  const taxAmount=grossRent*taxRate;
+  const netIncome=grossRent-grossExpenses-taxAmount;
+  const yieldPct=(netIncome/totalCost*100);
+  const payback=totalCost/netIncome;
+  let verdictClass,verdictTitle,verdictDesc;
+  if(payback<15){verdictClass='high';verdictTitle='Высокая привлекательность';verdictDesc='Отличный объект для инвестиций. Срок окупаемости менее 15 лет.';}
+  else if(payback<20){verdictClass='mid';verdictTitle='Средняя привлекательность';verdictDesc='Приемлемый вариант. Рекомендуем сравнить с другими объектами.';}
+  else if(payback<25){verdictClass='low';verdictTitle='Низкая привлекательность';verdictDesc='Длинный срок окупаемости. Есть более выгодные варианты.';}
+  else{verdictClass='low';verdictTitle='Невыгодно';verdictDesc='Объект окупится более чем за 25 лет. Не рекомендуется для инвестиций.';}
+  document.getElementById('calc-results').innerHTML=`
+    <div class="calc-results-title">📊 Результаты расчёта</div>
+    <div class="results-grid">
+      <div class="result-item">
+        <div class="result-num ${verdictClass==='high'?'good':verdictClass==='mid'?'mid':'bad'}">${yieldPct.toFixed(1)}%</div>
+        <div class="result-label">Чистая годовая<br>доходность</div>
+      </div>
+      <div class="result-item">
+        <div class="result-num ${verdictClass==='high'?'good':verdictClass==='mid'?'mid':'bad'}">${payback.toFixed(1)} лет</div>
+        <div class="result-label">Срок<br>окупаемости</div>
+      </div>
+      <div class="result-item">
+        <div class="result-num" style="color:var(--blue)">${(netIncome/1000).toFixed(0)} тыс</div>
+        <div class="result-label">Чистый доход<br>в год, ₽</div>
+      </div>
+    </div>
+    <div style="background:var(--bg);border-radius:var(--r);padding:1rem;margin-bottom:1rem;font-size:.82rem;color:var(--ink-60);line-height:1.7">
+      💡 Аренда ${rent.toLocaleString()} ₽/мес × 11 мес = ${grossRent.toLocaleString()} ₽<br>
+      📊 Налог ${(taxRate*100).toFixed(0)}% (${taxMode==='ndfl'?'НДФЛ':'самозанятый'}) = ${taxAmount.toLocaleString()} ₽<br>
+      🏠 Расходы = ${grossExpenses.toLocaleString()} ₽<br>
+      💰 Полная стоимость с ремонтом = ${totalCost.toLocaleString()} ₽
+    </div>
+    <div class="verdict-bar ${verdictClass}">
+      <div class="verdict-icon">${verdictClass==='high'?'🚀':verdictClass==='mid'?'⚡':'⚠️'}</div>
+      <div><div class="verdict-title ${verdictClass}">${verdictTitle}</div><div class="verdict-desc">${verdictDesc}</div></div>
+    </div>`;
+}
+
+// ═══════════════ CHAT ═══════════════
+const AI_CONTEXT = `Ты — AI-консультант по недвижимости в Уфе. База ЖК:
+${PROPERTIES.map(p=>`${p.name} (${p.district}, ${p.deadline}, от ${fmtPrice(p.priceFrom)}, доходность ${p.roi}%)`).join('\n')}
+Отвечай на русском, кратко и по делу. Рекомендуй конкретные ЖК из базы. Используй цифры.`;
+
+function initChat(){
+  if(chatHistory.length>0) return;
+  chatHistory=[];
+  const msgs=document.getElementById('chat-messages');
+  msgs.innerHTML='';
+  addBotMsg('Привет! 👋 Я знаю все 12 актуальных новостроек Уфы. Помогу выбрать квартиру для жизни или инвестиций. Что вас интересует?');
+}
+
+function addBotMsg(text){
+  const msgs=document.getElementById('chat-messages');
+  const div=document.createElement('div');
+  div.className='msg bot';
+  div.innerHTML=`<div class="msg-avatar bot">🤖</div>
+    <div><div class="msg-bubble">${text}</div><div class="msg-time">${new Date().toLocaleTimeString('ru',{hour:'2-digit',minute:'2-digit'})}</div></div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop=msgs.scrollHeight;
+}
+
+function addUserMsg(text){
+  const msgs=document.getElementById('chat-messages');
+  const div=document.createElement('div');
+  div.className='msg user';
+  div.innerHTML=`<div class="msg-avatar user">👤</div>
+    <div><div class="msg-bubble">${text}</div><div class="msg-time">${new Date().toLocaleTimeString('ru',{hour:'2-digit',minute:'2-digit'})}</div></div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop=msgs.scrollHeight;
+}
+
+function showTyping(){
+  const msgs=document.getElementById('chat-messages');
+  const div=document.createElement('div');
+  div.className='msg bot';div.id='typing-msg';
+  div.innerHTML=`<div class="msg-avatar bot">🤖</div>
+    <div class="msg-bubble"><div class="typing-indicator">
+      <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
+    </div></div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop=msgs.scrollHeight;
+}
+
+function removeTyping(){
+  const t=document.getElementById('typing-msg');
+  if(t) t.remove();
+}
+
+async function sendChatMessage(){
+  const input=document.getElementById('chat-input');
+  const text=input.value.trim();
+  if(!text) return;
+  input.value='';input.style.height='auto';
+  addUserMsg(text);
+  document.getElementById('chat-send-btn').disabled=true;
+  document.getElementById('chat-suggestions').style.display='none';
+  chatHistory.push({role:'user',content:text});
+  showTyping();
+  try{
+    const reply=await callClaude(text);
+    removeTyping();
+    addBotMsg(reply);
+    chatHistory.push({role:'assistant',content:reply});
+  }catch(e){
+    removeTyping();
+    addBotMsg('Произошла ошибка при подключении к AI. Проверьте API-ключ в настройках.');
+  }
+  document.getElementById('chat-send-btn').disabled=false;
+}
+
+async function callClaude(userMsg){
+  const response = await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      model:'claude-sonnet-4-20250514',
+      max_tokens:1000,
+      system:AI_CONTEXT,
+      messages:chatHistory.slice(-8)
+    })
+  });
+  if(!response.ok){
+    // Fallback: local smart responses
+    return localAIResponse(userMsg);
+  }
+  const data=await response.json();
+  return data.content[0].text;
+}
+
+function localAIResponse(msg){
+  const m=msg.toLowerCase();
+  if(m.includes('выгод')||m.includes('инвест')||m.includes('доход')){
+    const best=PROPERTIES.sort((a,b)=>b.roi-a.roi).slice(0,3);
+    return`📈 Топ-3 ЖК по доходности:\n\n${best.map((p,i)=>`${i+1}. ${p.name} — ${p.roi}% годовых (${p.district}, ${fmtPrice(p.priceFrom)})`).join('\n')}\n\n${best[0].name} лидирует с доходностью ${best[0].roi}%. Рекомендую рассчитать в калькуляторе.`;
+  }
+  if(m.includes('аренд')||m.includes('сдат')){
+    const arr=PROPERTIES.filter(p=>p.status==='ready'||p.deadlineYear<=2025).sort((a,b)=>b.roi-a.roi);
+    return`🏠 Для сдачи в аренду лучше всего:\n\n${arr.slice(0,3).map((p,i)=>`${i+1}. ${p.name} — ${fmtPrice(p.priceFrom)}, ${p.roi}% год.`).join('\n')}\n\nПриоритет: уже сданные дома и сдача в 2025 году.`;
+  }
+  if(m.includes('дешев')||m.includes('бюджет')||m.includes('недорог')){
+    const cheap=PROPERTIES.sort((a,b)=>a.priceFrom-b.priceFrom).slice(0,3);
+    return`💸 Самые доступные варианты:\n\n${cheap.map((p,i)=>`${i+1}. ${p.name} — от ${fmtPrice(p.priceFrom)} (${p.district})`).join('\n')}`;
+  }
+  if(m.includes('район')||m.includes('где')){
+    return`📍 По районам Уфы:\n\n🏙 Кировский — центр, выше цены (${PROPERTIES.filter(p=>p.district==='Кировский').length} ЖК)\n⭐ Советский — баланс цена/качество (${PROPERTIES.filter(p=>p.district==='Советский').length} ЖК)\n🌿 Ленинский — набережная (${PROPERTIES.filter(p=>p.district==='Ленинский').length} ЖК)\n🏗 Октябрьский — развивающийся (${PROPERTIES.filter(p=>p.district==='Октябрьский').length} ЖК)\n☀️ Орджоникидзевский — бюджетно (${PROPERTIES.filter(p=>p.district==='Орджоникидзевский').length} ЖК)`;
+  }
+  return`Нашёл для вас ${PROPERTIES.length} ЖК в Уфе. Уточните запрос: интересует инвестиция, покупка для жизни, конкретный район или бюджет?`;
+}
+
+function sendSuggestion(text){
+  document.getElementById('chat-input').value=text;
+  sendChatMessage();
+}
+
+function chatKeydown(e){
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChatMessage();}
+}
+
+function autoResize(el){
+  el.style.height='auto';el.style.height=Math.min(el.scrollHeight,120)+'px';
+}
+
+// ═══════════════ TOAST ═══════════════
+function showToast(msg){
+  const c=document.getElementById('toast-container');
+  const t=document.createElement('div');
+  t.className='toast';t.textContent=msg;
+  c.appendChild(t);
+  setTimeout(()=>t.style.opacity='0',2500);
+  setTimeout(()=>t.remove(),2800);
+}
+
+// ═══════════════ INIT ═══════════════
+setupFilterChips();
+renderCards();
+calcInvestment();
+</script>
+</body>
+</html>

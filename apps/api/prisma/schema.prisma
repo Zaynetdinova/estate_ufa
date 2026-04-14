@@ -1,0 +1,256 @@
+// ============================================================
+// Prisma Schema — AI Platform Новостройки Уфы
+// ============================================================
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// DEVELOPERS — Застройщики
+// ============================================================
+model Developer {
+  id            Int        @id @default(autoincrement())
+  name          String     @db.VarChar(200)
+  logoUrl       String?    @map("logo_url")
+  website       String?
+  phone         String?    @db.VarChar(20)
+  rating        Decimal?   @db.Decimal(3, 1)
+  projectsCount Int        @default(0) @map("projects_count")
+  createdAt     DateTime   @default(now()) @map("created_at")
+
+  properties    Property[]
+
+  @@map("developers")
+}
+
+// ============================================================
+// PROPERTIES — ЖК (главная таблица)
+// ============================================================
+model Property {
+  id           Int      @id @default(autoincrement())
+  slug         String   @unique @db.VarChar(200)
+  name         String   @db.VarChar(200)
+  developerId  Int?     @map("developer_id")
+  district     String   @db.VarChar(100)
+  address      String?
+  lat          Decimal? @db.Decimal(10, 8)
+  lng          Decimal? @db.Decimal(11, 8)
+  deadlineQ    Int?     @map("deadline_q") @db.SmallInt
+  deadlineYear Int?     @map("deadline_year") @db.SmallInt
+  status       String   @default("building") @db.VarChar(20) // building | ready
+  priceFrom    BigInt   @map("price_from")
+  priceTo      BigInt?  @map("price_to")
+  priceM2      Int?     @map("price_m2")
+  floors       Int?     @db.SmallInt
+  areaMin      Decimal? @map("area_min") @db.Decimal(6, 2)
+  areaMax      Decimal? @map("area_max") @db.Decimal(6, 2)
+  description  String?
+  metaTitle    String?  @map("meta_title") @db.VarChar(200)
+  metaDesc     String?  @map("meta_desc") @db.VarChar(500)
+  isHot        Boolean  @default(false) @map("is_hot")
+  viewsCount   Int      @default(0) @map("views_count")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  developer    Developer?      @relation(fields: [developerId], references: [id])
+  images       PropertyImage[]
+  layouts      Layout[]
+  favorites    Favorite[]
+  calcHistory  CalcHistory[]
+  userEvents   UserEvent[]
+
+  @@index([district])
+  @@index([deadlineYear, deadlineQ])
+  @@index([priceFrom, priceTo])
+  @@index([lat, lng])
+  @@map("properties")
+}
+
+// ============================================================
+// PROPERTY_IMAGES — Изображения ЖК
+// ============================================================
+model PropertyImage {
+  id         Int      @id @default(autoincrement())
+  propertyId Int      @map("property_id")
+  url        String
+  alt        String?  @db.VarChar(200)
+  sortOrder  Int      @default(0) @map("sort_order") @db.SmallInt
+  type       String   @default("exterior") @db.VarChar(20) // exterior | interior | lobby
+
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@map("property_images")
+}
+
+// ============================================================
+// LAYOUTS — Планировки
+// ============================================================
+model Layout {
+  id          Int      @id @default(autoincrement())
+  propertyId  Int      @map("property_id")
+  rooms       Int?     @db.SmallInt // 0=студия, 1,2,3...
+  areaMin     Decimal? @map("area_min") @db.Decimal(6, 2)
+  areaMax     Decimal? @map("area_max") @db.Decimal(6, 2)
+  priceFrom   BigInt?  @map("price_from")
+  priceTo     BigInt?  @map("price_to")
+  imageUrl    String?  @map("image_url")
+  isAvailable Boolean  @default(true) @map("is_available")
+
+  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@map("layouts")
+}
+
+// ============================================================
+// USERS — Пользователи (расширенные для AI-анализа)
+// ============================================================
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique @db.VarChar(200)
+  passwordHash String   @map("password_hash") @db.VarChar(200)
+  name         String?  @db.VarChar(200)
+  phone        String?  @db.VarChar(20)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  // AI-профиль пользователя
+  userPreferences Json?   @map("user_preferences") @db.JsonB
+  // Пример: { "rooms": [2,3], "districts": ["Советский"], "deadline": "2025" }
+  budgetMin       Int?    @map("budget_min")
+  budgetMax       Int?    @map("budget_max")
+  intent          String? @db.VarChar(10) @map("intent")
+  // intent: 'low' | 'medium' | 'high' — уровень готовности к покупке
+
+  favorites    Favorite[]
+  calcHistory  CalcHistory[]
+  chatMessages ChatMessage[]
+  userEvents   UserEvent[]
+  leads        Lead[]
+
+  @@map("users")
+}
+
+// ============================================================
+// FAVORITES — Избранное
+// ============================================================
+model Favorite {
+  id         Int      @id @default(autoincrement())
+  userId     Int      @map("user_id")
+  propertyId Int      @map("property_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, propertyId])
+  @@index([userId])
+  @@map("favorites")
+}
+
+// ============================================================
+// CALC_HISTORY — История расчётов калькулятора
+// ============================================================
+model CalcHistory {
+  id              Int      @id @default(autoincrement())
+  userId          Int?     @map("user_id")
+  propertyId      Int?     @map("property_id")
+  price           BigInt?
+  repairCost      Int?     @map("repair_cost")
+  monthlyRent     Int?     @map("monthly_rent")
+  monthlyExpenses Int?     @map("monthly_expenses")
+  taxMode         String?  @map("tax_mode") @db.VarChar(10) // ndfl | patent
+  yieldPct        Decimal? @map("yield_pct") @db.Decimal(5, 2)
+  paybackYears    Decimal? @map("payback_years") @db.Decimal(5, 1)
+  netIncome       BigInt?  @map("net_income")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  user     User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property Property? @relation(fields: [propertyId], references: [id])
+
+  @@map("calc_history")
+}
+
+// ============================================================
+// CHAT_MESSAGES — История чата с AI
+// ============================================================
+model ChatMessage {
+  id         Int      @id @default(autoincrement())
+  userId     Int?     @map("user_id")
+  sessionId  String?  @map("session_id") @db.VarChar(64)
+  role       String   @db.VarChar(10) // user | assistant
+  content    String
+  tokensUsed Int?     @map("tokens_used")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user       User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([sessionId])
+  @@map("chat_messages")
+}
+
+// ============================================================
+// USER_EVENTS — Event-driven: все действия пользователя
+// ============================================================
+model UserEvent {
+  id         Int      @id @default(autoincrement())
+  userId     Int?     @map("user_id")
+  sessionId  String?  @map("session_id") @db.VarChar(64)
+  eventType  String   @map("event_type") @db.VarChar(50)
+  // Типы событий:
+  //   USER_MESSAGE       — сообщение в чате
+  //   VIEW_PROPERTY      — просмотр страницы ЖК
+  //   CALCULATOR_USED    — использование калькулятора
+  //   REQUEST_SELECTION  — нажал "Получить подборку"
+  //   ADD_FAVORITE       — добавил в избранное
+  //   AUTH_LOGIN         — авторизовался
+  payload    Json     @db.JsonB
+  // Пример payload для VIEW_PROPERTY:
+  //   { "propertyId": 42, "propertyName": "ЖК Символ", "timeSpent": 120 }
+  propertyId Int?     @map("property_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user       User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  property   Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([eventType])
+  @@index([createdAt])
+  @@map("user_events")
+}
+
+// ============================================================
+// LEADS — Лидогенерация
+// ============================================================
+model Lead {
+  id        Int      @id @default(autoincrement())
+  userId    Int?     @map("user_id")
+  source    String   @db.VarChar(20) // chat | manual | calculator
+  status    String   @default("new") @db.VarChar(20)
+  // Статусы: new | contacted | qualified | closed_won | closed_lost
+  score     Int      @default(0)
+  // Скоринг:
+  //   +2  — использовал калькулятор
+  //   +3  — смотрел >3 ЖК
+  //   +5  — написал "хочу купить" / "куплю"
+  //   +10 — нажал "Получить подборку"
+  notes     String?
+  // Дополнительные данные из профиля на момент создания лида
+  snapshot  Json?    @db.JsonB
+  // Пример: { "budgetMin": 3000000, "budgetMax": 5000000, "intent": "high", "viewedProperties": [1,2,3] }
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([score])
+  @@index([createdAt])
+  @@map("leads")
+}

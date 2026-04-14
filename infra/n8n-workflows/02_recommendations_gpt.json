@@ -1,0 +1,72 @@
+{
+  "name": "02 — Recommendations → GPT",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "recommendations",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-reco",
+      "name": "Webhook /recommendations",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body ?? $input.first().json;\nconst { userId, userProfile, candidates } = body;\n\nconst candidatesList = (candidates ?? []).map((p, i) =>\n  `${i + 1}. ID:${p.id} | ${p.name} | ${p.district} | от ${((p.priceFrom ?? 0) / 1_000_000).toFixed(1)} млн | ${p.areaMin ?? '?'}–${p.areaMax ?? '?'} м² | ${p.status === 'ready' ? 'сдан' : 'строится'}${p.isHot ? ' [ХИТ]' : ''}`\n).join('\\n');\n\nconst profileStr = [\n  userProfile?.budgetMin ? `бюджет от ${(userProfile.budgetMin / 1_000_000).toFixed(1)} млн` : '',\n  userProfile?.budgetMax ? `до ${(userProfile.budgetMax / 1_000_000).toFixed(1)} млн` : '',\n  userProfile?.intent    ? `намерение: ${userProfile.intent}` : '',\n  userProfile?.userPreferences?.rooms     ? `комнат: ${userProfile.userPreferences.rooms.join(',')}` : '',\n  userProfile?.userPreferences?.districts ? `районы: ${userProfile.userPreferences.districts.join(',')}` : '',\n].filter(Boolean).join(', ');\n\nconst systemPrompt = `Ты — AI-подбор недвижимости. Выбери 5 лучших ЖК для пользователя и дай краткое обоснование для каждого.\\n\\nПрофиль: ${profileStr || 'не заполнен'}.\\n\\nДоступные ЖК:\\n${candidatesList}\\n\\nОтветь строго в формате JSON (без markdown):\\n{\\n  \"summary\": \"краткий текст о подборке (1-2 предложения)\",\\n  \"properties\": [\\n    { \"id\": число, \"reason\": \"почему подходит (до 60 символов)\" }\\n  ]\\n}`;\n\nreturn [{ json: { systemPrompt, candidates: candidates ?? [], userId } }];"
+      },
+      "id": "build-prompt",
+      "name": "Build GPT Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://api.openai.com/v1/chat/completions",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.OPENAI_API_KEY }}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'gpt-4o-mini', messages: [{ role: 'system', content: $json.systemPrompt }, { role: 'user', content: 'Подбери подходящие ЖК' }], temperature: 0.3, max_tokens: 600 }) }}",
+        "options": { "timeout": 30000 }
+      },
+      "id": "openai-call",
+      "name": "Call OpenAI API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw        = $input.first().json.choices?.[0]?.message?.content ?? '{}';\nconst candidates = $('Build GPT Prompt').first().json.candidates ?? [];\n\nlet parsed;\ntry {\n  parsed = JSON.parse(raw);\n} catch {\n  return [{ json: { properties: [], summary: '', source: 'ai' } }];\n}\n\nconst enriched = (parsed.properties ?? []).map((rec) => {\n  const original = candidates.find((c) => c.id === rec.id);\n  if (!original) return null;\n  return {\n    id:        original.id,\n    name:      original.name,\n    slug:      original.slug,\n    district:  original.district,\n    priceFrom: original.priceFrom,\n    priceM2:   original.priceM2,\n    status:    original.status,\n    reason:    rec.reason,\n  };\n}).filter(Boolean);\n\nreturn [{ json: { properties: enriched, summary: parsed.summary ?? '', source: 'ai' } }];"
+      },
+      "id": "parse-response",
+      "name": "Parse & Enrich Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    }
+  ],
+  "connections": {
+    "Webhook /recommendations": {
+      "main": [[{ "node": "Build GPT Prompt",        "type": "main", "index": 0 }]]
+    },
+    "Build GPT Prompt": {
+      "main": [[{ "node": "Call OpenAI API",          "type": "main", "index": 0 }]]
+    },
+    "Call OpenAI API": {
+      "main": [[{ "node": "Parse & Enrich Response",  "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}

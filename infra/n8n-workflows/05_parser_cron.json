@@ -1,0 +1,50 @@
+{
+  "name": "05 — Parser Cron (каждые 6 часов)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "hours", "hoursInterval": 6 }] }
+      },
+      "id": "cron-trigger",
+      "name": "Every 6 hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url":    "http://api:4000/parser/run?source=ufanovostroyka",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": { "timeout": 120000 }
+      },
+      "id": "trigger-parser",
+      "name": "Trigger Parser API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [460, 300],
+      "credentials": {
+        "httpHeaderAuth": { "id": "api-jwt-cred", "name": "API JWT" }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $vars.TELEGRAM_CHAT_ID }}",
+        "text":   "={{'🤖 *Парсер завершён*\\nОбновлено объектов: ' + ($json.updated ?? 0) + '\\nДобавлено: ' + ($json.created ?? 0) + '\\nОшибок: ' + ($json.errors?.length ?? 0) + '\\nИсточник: ufanovostroyka.ru'}}",
+        "additionalFields": { "parse_mode": "Markdown" }
+      },
+      "id": "notify-parser-done",
+      "name": "Notify Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [680, 300],
+      "credentials": { "telegramApi": { "id": "telegram-bot-cred", "name": "Telegram Bot" } }
+    }
+  ],
+  "connections": {
+    "Every 6 hours":      { "main": [[{ "node": "Trigger Parser API", "type": "main", "index": 0 }]] },
+    "Trigger Parser API": { "main": [[{ "node": "Notify Telegram",    "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" }
+}

@@ -1,0 +1,99 @@
+{
+  "name": "01 — New Lead → Telegram",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "new-lead",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-events",
+      "name": "Webhook /new-lead",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst body = item.json.body ?? item.json;\nconst p    = body.payload ?? body;\n\nconst intentLabel = { high: '🔥 Горячий', medium: '🌡 Тёплый', low: '❄️ Холодный' };\nconst sourceLabel = { chat: '💬 Чат', manual: '👆 Кнопка', calculator: '🧮 Калькулятор' };\n\nconst budgetStr = (p.budgetMin || p.budgetMax)\n  ? `${p.budgetMin ? (p.budgetMin / 1_000_000).toFixed(1) + ' млн' : '?'} — ${p.budgetMax ? (p.budgetMax / 1_000_000).toFixed(1) + ' млн' : '?'} ₽`\n  : 'не указан';\n\nconst text = [\n  `🆕 *Новый лид #${p.leadId}*`,\n  ``,\n  `👤 ${p.userName || 'Аноним'} ${p.userPhone ? `· ${p.userPhone}` : ''}`,\n  `📧 ${p.userEmail || '—'}`,\n  ``,\n  `📊 Скор: *${p.score}/20*`,\n  `${intentLabel[p.intent] || '❓ Неизвестно'}`,\n  `💰 Бюджет: ${budgetStr}`,\n  `📍 Источник: ${sourceLabel[p.source] || p.source}`,\n  ``,\n  p.snapshot?.viewedPropertiesCount\n    ? `👁 Просмотрел ЖК: ${p.snapshot.viewedPropertiesCount}`\n    : '',\n].filter(Boolean).join('\\n');\n\nreturn [{ json: { text, leadId: p.leadId, score: p.score ?? 0 } }];"
+      },
+      "id": "format-telegram",
+      "name": "Format Telegram Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $vars.TELEGRAM_CHAT_ID }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "parse_mode": "Markdown",
+          "reply_markup": {
+            "inline_keyboard": [
+              [
+                {
+                  "text": "Открыть CRM",
+                  "url": "={{ ($vars.CRM_URL ?? 'http://localhost:3000') + '/admin/leads' }}"
+                }
+              ]
+            ]
+          }
+        }
+      },
+      "id": "telegram-send",
+      "name": "Send to Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [680, 300],
+      "credentials": {
+        "telegramApi": { "id": "telegram-bot-cred", "name": "Telegram Bot" }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            { "value1": "={{ $json.score }}", "operation": "largerEqual", "value2": 10 }
+          ]
+        }
+      },
+      "id": "filter-hot-lead",
+      "name": "Filter: score >= 10",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 1,
+      "position": [680, 500]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $vars.TELEGRAM_CHAT_ID }}",
+        "text": "🚨 *ГОРЯЧИЙ ЛИД #{{ $json.leadId }}* — скор {{ $json.score }}!\nПозвони в течение 5 минут.",
+        "additionalFields": { "parse_mode": "Markdown" }
+      },
+      "id": "telegram-hot-alert",
+      "name": "Hot Lead Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [900, 500],
+      "credentials": {
+        "telegramApi": { "id": "telegram-bot-cred", "name": "Telegram Bot" }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook /new-lead": {
+      "main": [[{ "node": "Format Telegram Message", "type": "main", "index": 0 }]]
+    },
+    "Format Telegram Message": {
+      "main": [
+        [{ "node": "Send to Telegram",    "type": "main", "index": 0 }],
+        [{ "node": "Filter: score >= 10", "type": "main", "index": 0 }]
+      ]
+    },
+    "Filter: score >= 10": {
+      "main": [[{ "node": "Hot Lead Alert", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}

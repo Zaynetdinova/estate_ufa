@@ -1,0 +1,240 @@
+{
+  "name": "03 — Events Router",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "events",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-main",
+      "name": "Webhook /events",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 500]
+    },
+
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst body = item.json.body ?? {};\nreturn [{\n  json: {\n    eventType: body.eventType ?? '',\n    userId:    body.userId,\n    sessionId: body.sessionId,\n    payload:   body.payload ?? {},\n    timestamp: body.timestamp\n  }\n}];"
+      },
+      "id": "normalize-body",
+      "name": "Normalize body",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 500]
+    },
+
+    {
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": true },
+                "conditions": [{ "leftValue": "={{ $json.eventType }}", "rightValue": "USER_MESSAGE", "operator": { "type": "string", "operation": "equals" } }],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "USER_MESSAGE"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true },
+                "conditions": [{ "leftValue": "={{ $json.eventType }}", "rightValue": "VIEW_PROPERTY", "operator": { "type": "string", "operation": "equals" } }],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "VIEW_PROPERTY"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true },
+                "conditions": [{ "leftValue": "={{ $json.eventType }}", "rightValue": "CALCULATOR_USED", "operator": { "type": "string", "operation": "equals" } }],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "CALCULATOR_USED"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true },
+                "conditions": [{ "leftValue": "={{ $json.eventType }}", "rightValue": "REQUEST_SELECTION", "operator": { "type": "string", "operation": "equals" } }],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "REQUEST_SELECTION"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true },
+                "conditions": [{ "leftValue": "={{ $json.eventType }}", "rightValue": "ADD_FAVORITE", "operator": { "type": "string", "operation": "equals" } }],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "ADD_FAVORITE"
+            }
+          ]
+        },
+        "options": { "fallbackOutput": "extra" }
+      },
+      "id": "switch-event-type",
+      "name": "Switch by eventType",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [680, 500]
+    },
+
+    {
+      "parameters": {
+        "jsCode": "const { userId, payload } = $input.first().json;\nconst msg = payload?.message ?? '';\nconst HOT_PHRASES  = ['хочу купить','куплю','покупку','беру','оформить','ипотека','взнос'];\nconst WARM_PHRASES = ['рассматриваю','присматриваюсь','интересует','планирую','думаю'];\nconst BUDGET_RE    = /(\\d+[,.]?\\d*)\\s*(млн|тыс|т\\.?р|руб|₽)/gi;\nconst lower = msg.toLowerCase();\nconst isHot  = HOT_PHRASES.some(p => lower.includes(p));\nconst isWarm = WARM_PHRASES.some(p => lower.includes(p));\nconst budgetMatch = [...msg.matchAll(BUDGET_RE)];\nreturn [{ json: { userId, message: msg, intent: isHot ? 'high' : isWarm ? 'medium' : 'low', hasBudgetMention: budgetMatch.length > 0, rawBudgets: budgetMatch.map(m => m[0]), shouldNotify: isHot } }];"
+      },
+      "id": "analyze-user-message",
+      "name": "Analyze USER_MESSAGE",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [940, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [{ "value1": "={{ $json.shouldNotify }}", "operation": "equal", "value2": true }]
+        }
+      },
+      "id": "filter-hot-intent",
+      "name": "Filter: hot intent",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 1,
+      "position": [1160, 200]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "={{'🔥 *Горячий интент!*\\nПользователь #' + $json.userId + ' написал:\\n_' + ($json.message || '').slice(0, 200) + '_\\n\\nБюджет: ' + ($json.hasBudgetMention ? $json.rawBudgets.join(', ') : 'не указан')}}",
+        "additionalFields": { "parse_mode": "Markdown" }
+      },
+      "id": "notify-hot-intent",
+      "name": "Notify Hot Intent",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1380, 200],
+      "credentials": { "telegramApi": { "id": "telegram-bot-cred", "name": "Telegram Bot" } }
+    },
+
+    {
+      "parameters": {
+        "jsCode": "const { userId, payload } = $input.first().json;\nconsole.log(`[VIEW_PROPERTY] user=${userId} property=${payload?.propertyId} name=${payload?.propertyName}`);\nreturn [{ json: { logged: true } }];"
+      },
+      "id": "log-view-property",
+      "name": "Log VIEW_PROPERTY",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [940, 360]
+    },
+
+    {
+      "parameters": {
+        "jsCode": "const { userId, payload } = $input.first().json;\nconsole.log(`[CALC] user=${userId} yield=${payload?.yieldPct}% payback=${payload?.paybackYears}yr price=${payload?.price}`);\nreturn [{ json: { logged: true } }];"
+      },
+      "id": "log-calculator",
+      "name": "Log CALCULATOR_USED",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [940, 500]
+    },
+
+    {
+      "parameters": {
+        "jsCode": "const { userId, payload, timestamp } = $input.first().json;\nreturn [{ json: { userId, source: payload?.source ?? 'button', timestamp, shouldStartFunnel: true } }];"
+      },
+      "id": "prepare-funnel",
+      "name": "Prepare Funnel",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [940, 640]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "={{'📋 *Запрос подборки*\\nПользователь #' + $json.userId + ' нажал «Получить подборку»\\nИсточник: ' + ($json.source || 'button')}}",
+        "additionalFields": { "parse_mode": "Markdown" }
+      },
+      "id": "notify-selection-request",
+      "name": "Notify Selection Request",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1160, 640],
+      "credentials": { "telegramApi": { "id": "telegram-bot-cred", "name": "Telegram Bot" } }
+    },
+    {
+      "parameters": {
+        "url": "http://n8n:5678/webhook/lead-funnel",
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ source: $json.source, userId: $json.userId, timestamp: $json.timestamp }) }}",
+        "options": { "timeout": 5000 }
+      },
+      "id": "forward-lead-email",
+      "name": "Forward to WF04 Email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1380, 640]
+    },
+
+    {
+      "parameters": {
+        "jsCode": "const { userId, payload } = $input.first().json;\nconsole.log(`[ADD_FAVORITE] user=${userId} property=${payload?.propertyId}`);\nreturn [{ json: { logged: true } }];"
+      },
+      "id": "log-favorite",
+      "name": "Log ADD_FAVORITE",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [940, 780]
+    },
+
+    {
+      "parameters": {
+        "jsCode": "const eventType = $input.first().json.eventType;\nconsole.log(`[EVENTS_ROUTER] unknown eventType: ${eventType}`);\nreturn [{ json: { skipped: true, eventType } }];"
+      },
+      "id": "fallback",
+      "name": "Fallback (log only)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [940, 920]
+    }
+  ],
+  "connections": {
+    "Webhook /events": {
+      "main": [[{ "node": "Normalize body", "type": "main", "index": 0 }]]
+    },
+    "Normalize body": {
+      "main": [[{ "node": "Switch by eventType", "type": "main", "index": 0 }]]
+    },
+    "Switch by eventType": {
+      "main": [
+        [{ "node": "Analyze USER_MESSAGE",  "type": "main", "index": 0 }],
+        [{ "node": "Log VIEW_PROPERTY",      "type": "main", "index": 0 }],
+        [{ "node": "Log CALCULATOR_USED",    "type": "main", "index": 0 }],
+        [{ "node": "Prepare Funnel",         "type": "main", "index": 0 }],
+        [{ "node": "Log ADD_FAVORITE",       "type": "main", "index": 0 }],
+        [{ "node": "Fallback (log only)",    "type": "main", "index": 0 }]
+      ]
+    },
+    "Analyze USER_MESSAGE": {
+      "main": [[{ "node": "Filter: hot intent", "type": "main", "index": 0 }]]
+    },
+    "Filter: hot intent": {
+      "main": [[{ "node": "Notify Hot Intent", "type": "main", "index": 0 }]]
+    },
+    "Prepare Funnel": {
+      "main": [[{ "node": "Notify Selection Request", "type": "main", "index": 0 }]]
+    },
+    "Notify Selection Request": {
+      "main": [[{ "node": "Forward to WF04 Email", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}
