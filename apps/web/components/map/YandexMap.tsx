@@ -8,111 +8,97 @@ interface Props {
   onSelect?:  (property: Property) => void;
 }
 
-// Глобальный тип для Яндекс Карт
 declare global {
   interface Window {
-    ymaps3: any;
+    ymaps: any;
   }
 }
 
 export function YandexMap({ properties, onSelect }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef       = useRef<any>(null);
-  const markersRef   = useRef<any[]>([]);
-  const [loaded,     setLoaded] = useState(false);
-  const [error,      setError]  = useState('');
+  const [error,      setError] = useState('');
 
-  // Загружаем Яндекс Карты JS API 3.0
   useEffect(() => {
-    if (window.ymaps3) { setLoaded(true); return; }
-
     const apiKey = process.env.NEXT_PUBLIC_YANDEX_MAPS_KEY ?? '';
 
-    const script    = document.createElement('script');
-    script.src      = `https://api-maps.yandex.ru/v3/?apikey=${apiKey}&lang=ru_RU`;
-    script.async    = true;
-    script.onload   = () => {
-      window.ymaps3.ready.then(() => setLoaded(true));
+    const initMap = () => {
+      window.ymaps.ready(() => {
+        if (!containerRef.current) return;
+
+        // Уничтожаем предыдущую карту если была
+        if (mapRef.current) {
+          mapRef.current.destroy();
+          mapRef.current = null;
+        }
+
+        const map = new window.ymaps.Map(containerRef.current, {
+          center: [54.7388, 55.9578], // Уфа [lat, lng]
+          zoom:   11,
+          controls: ['zoomControl', 'fullscreenControl'],
+        });
+
+        mapRef.current = map;
+
+        // Добавляем метки
+        properties.forEach((p) => {
+          if (!p.lat || !p.lng) return;
+
+          const placemark = new window.ymaps.Placemark(
+            [Number(p.lat), Number(p.lng)],
+            {
+              balloonContentHeader: p.name,
+              balloonContentBody:   `
+                <div style="font-family: sans-serif; min-width: 180px;">
+                  <div style="color: #666; font-size: 12px; margin-bottom: 4px">${p.district}</div>
+                  <div style="color: #2F80ED; font-weight: 700; font-size: 16px;">
+                    от ${(Number(p.priceFrom) / 1_000_000).toFixed(1)} млн ₽
+                  </div>
+                  ${p.priceM2 ? `<div style="color: #999; font-size: 12px">${Number(p.priceM2).toLocaleString('ru')} ₽/м²</div>` : ''}
+                </div>
+              `,
+              hintContent: p.name,
+            },
+            {
+              preset: p.isHot ? 'islands#orangeStretchyIcon' : 'islands#blueStretchyIcon',
+              iconContent: `от ${(Number(p.priceFrom) / 1_000_000).toFixed(1)} млн`,
+            },
+          );
+
+          placemark.events.add('click', () => onSelect?.(p));
+          map.geoObjects.add(placemark);
+        });
+      });
     };
+
+    // Если уже загружено
+    if (window.ymaps) {
+      initMap();
+      return;
+    }
+
+    // Загружаем скрипт
+    if (document.querySelector('#ymaps-script')) {
+      // Скрипт уже добавлен, ждём загрузки
+      const interval = setInterval(() => {
+        if (window.ymaps) { clearInterval(interval); initMap(); }
+      }, 100);
+      return;
+    }
+
+    const script    = document.createElement('script');
+    script.id       = 'ymaps-script';
+    script.src      = `https://api-maps.yandex.ru/2.1/?apikey=${apiKey}&lang=ru_RU`;
+    script.async    = true;
+    script.onload   = initMap;
     script.onerror  = () => setError('Не удалось загрузить Яндекс Карты');
     document.head.appendChild(script);
-
-    return () => { document.head.removeChild(script); };
-  }, []);
-
-  // Инициализируем карту
-  useEffect(() => {
-    if (!loaded || !containerRef.current) return;
-
-    const { YMap, YMapDefaultSchemeLayer, YMapDefaultFeaturesLayer } = window.ymaps3;
-
-    mapRef.current = new YMap(containerRef.current, {
-      location: {
-        center: [55.9578, 54.7388], // Уфа [lng, lat]
-        zoom:   11,
-      },
-    });
-
-    mapRef.current.addChild(new YMapDefaultSchemeLayer());
-    mapRef.current.addChild(new YMapDefaultFeaturesLayer());
 
     return () => {
       mapRef.current?.destroy();
       mapRef.current = null;
     };
-  }, [loaded]);
-
-  // Добавляем маркеры
-  useEffect(() => {
-    if (!loaded || !mapRef.current) return;
-
-    const { YMapMarker } = window.ymaps3;
-
-    // Убираем старые маркеры
-    markersRef.current.forEach((m) => mapRef.current?.removeChild(m));
-    markersRef.current = [];
-
-    properties.forEach((p) => {
-      if (!p.lat || !p.lng) return;
-
-      // Создаём DOM-элемент маркера
-      const el       = document.createElement('div');
-      el.style.cssText = `
-        background: ${p.isHot ? '#F2994A' : '#2F80ED'};
-        color: #fff;
-        padding: 4px 10px;
-        border-radius: 20px;
-        font-family: Manrope, sans-serif;
-        font-size: 12px;
-        font-weight: 700;
-        white-space: nowrap;
-        cursor: pointer;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-        transform: translateY(-50%);
-        transition: transform 0.15s, box-shadow 0.15s;
-      `;
-      el.textContent = `от ${(Number(p.priceFrom) / 1_000_000).toFixed(1)} млн`;
-      el.title       = p.name;
-
-      el.addEventListener('mouseenter', () => {
-        el.style.transform  = 'translateY(-50%) scale(1.08)';
-        el.style.boxShadow  = '0 4px 16px rgba(0,0,0,0.25)';
-      });
-      el.addEventListener('mouseleave', () => {
-        el.style.transform  = 'translateY(-50%)';
-        el.style.boxShadow  = '0 2px 8px rgba(0,0,0,0.2)';
-      });
-      el.addEventListener('click', () => onSelect?.(p));
-
-      const marker = new YMapMarker(
-        { coordinates: [p.lng, p.lat] },
-        el,
-      );
-
-      mapRef.current.addChild(marker);
-      markersRef.current.push(marker);
-    });
-  }, [loaded, properties, onSelect]);
+  }, [properties]);
 
   if (error) {
     return (
@@ -124,11 +110,6 @@ export function YandexMap({ properties, onSelect }: Props) {
 
   return (
     <div style={{ position: 'relative', height: '100%', borderRadius: 16, overflow: 'hidden' }}>
-      {!loaded && (
-        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#E2E8F0', zIndex: 1 }}>
-          <div style={{ color: 'rgba(15,25,35,0.4)', fontSize: '0.875rem' }}>Загрузка карты…</div>
-        </div>
-      )}
       <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
     </div>
   );
