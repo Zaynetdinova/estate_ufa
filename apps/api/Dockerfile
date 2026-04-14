@@ -9,20 +9,7 @@ RUN npm run build
 
 FROM node:20-alpine AS runner
 WORKDIR /app
-
-# OpenSSL для Prisma + зависимости для Chromium/Puppeteer
-RUN apk add --no-cache \
-    openssl \
-    chromium \
-    nss \
-    freetype \
-    harfbuzz \
-    ca-certificates \
-    ttf-freefont
-
-# Puppeteer использует системный Chromium вместо скачивания своего
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+RUN apk add --no-cache openssl
 ENV NODE_ENV=production
 
 COPY --from=builder /app/dist         ./dist

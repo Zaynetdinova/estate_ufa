@@ -43,11 +43,6 @@ services:
     image: docker.n8n.io/n8nio/n8n:latest
     container_name: estate_n8n
     restart: unless-stopped
-    command: >
-      sh -c "
-        n8n import:workflow --separate --input=/home/node/workflows/ 2>/dev/null || true &&
-        n8n start
-      "
     environment:
       N8N_HOST:                    ${N8N_HOST:-localhost}
       N8N_PORT:                    5678
@@ -70,6 +65,7 @@ services:
       OPENAI_API_KEY:              ${OPENAI_API_KEY}
       TELEGRAM_CHAT_ID:            ${TELEGRAM_CHAT_ID}
       N8N_BLOCK_ENV_ACCESS_IN_NODE: 'false'
+      N8N_IMPORT_WORKFLOWS_DIR:    /home/node/workflows
     volumes:
       - n8n_data:/home/node/.n8n
       - ./n8n-workflows:/home/node/workflows
@@ -121,9 +117,6 @@ services:
       SWAGGER_ENABLED:  'true'
     ports:
       - '4000:4000'
-    dns:
-      - 8.8.8.8
-      - 1.1.1.1
     depends_on:
       postgres:
         condition: service_healthy

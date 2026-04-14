@@ -2,6 +2,7 @@ import { propertiesApi } from '@/lib/api';
 import { PropertyCard } from '@/components/catalog/PropertyCard';
 import { RequestSelectionButton } from '@/components/leads/RequestSelectionButton';
 
+export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Каталог новостроек | Уфа' };
 
 interface PageProps {
@@ -16,7 +17,10 @@ export default async function CatalogPage({ searchParams }: PageProps) {
     page:     searchParams.page ? Number(searchParams.page) : 1,
     limit:    12,
     sort:     'popular',
-  }).catch(() => ({ items: [], pagination: { total: 0, page: 1, pages: 1 } }));
+  }).catch((err) => {
+    console.error('[CatalogPage] fetch failed:', err?.message ?? err);
+    return { items: [], pagination: { total: 0, page: 1, pages: 1 } };
+  });
 
   return (
     <main style={{ maxWidth: 1400, margin: '0 auto', padding: '2rem 1rem' }}>
