@@ -17,47 +17,60 @@
     {
       "parameters": {
         "conditions": {
-          "string": [
-            { "value1": "={{ $json.body?.eventType ?? $json.eventType }}", "operation": "equals", "value2": "NEW_LEAD" }
-          ]
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "cond-event-type",
+              "leftValue": "={{ $json.body.eventType }}",
+              "rightValue": "NEW_LEAD",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
         }
       },
       "id": "filter-lead",
       "name": "Filter: NEW_LEAD",
       "type": "n8n-nodes-base.filter",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [460, 300]
     },
     {
       "parameters": {
         "conditions": {
-          "string": [
-            { "value1": "={{ $json.body.payload.userEmail }}", "operation": "isNotEmpty" }
-          ]
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "cond-has-email",
+              "leftValue": "={{ $json.body.payload.userEmail }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "notEmpty" }
+            }
+          ],
+          "combinator": "and"
         }
       },
       "id": "filter-has-email",
       "name": "Filter: has email",
       "type": "n8n-nodes-base.filter",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [680, 300]
     },
 
     {
       "parameters": {
-        "fromEmail":   "no-reply@novostroyki-ufa.ru",
-        "toEmail":     "={{ $json.body.payload.userEmail }}",
-        "subject":     "Ваша подборка квартир готова",
-        "emailFormat": "html",
-        "html":        "={{ '<html><body style=\"font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#0F1923\"><div style=\"background:#0F1923;padding:24px;text-align:center\"><span style=\"font-size:1rem;color:#fff;font-weight:700\">● Новостройки Уфы</span></div><div style=\"padding:32px 24px\"><h2 style=\"font-size:1.375rem;margin-bottom:12px\">Привет' + ($json.body.payload.userName ? ', ' + $json.body.payload.userName : '') + '!</h2><p style=\"color:rgba(15,25,35,0.65);line-height:1.7;margin-bottom:24px\">Спасибо за интерес к новостройкам Уфы. Мы подготовили персональную подборку под ваш запрос.</p><a href=\"' + $vars.FRONTEND_URL + '/recommendations\" style=\"display:inline-block;padding:14px 28px;background:#2F80ED;color:#fff;border-radius:10px;text-decoration:none;font-weight:700\">Смотреть подборку</a></div><div style=\"padding:16px 24px;border-top:1px solid rgba(15,25,35,0.08);font-size:0.75rem;color:rgba(15,25,35,0.4);text-align:center\">Новостройки Уфы · <a href=\"' + $vars.FRONTEND_URL + '/unsubscribe\" style=\"color:rgba(15,25,35,0.4)\">Отписаться</a></div></body></html>' }}"
+        "sendTo": "={{ $json.body.payload.userEmail }}",
+        "subject": "Ваша подборка квартир готова",
+        "message": "={{ '<html><body style=\"font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#0F1923\"><div style=\"background:#0F1923;padding:24px;text-align:center\"><span style=\"font-size:1rem;color:#fff;font-weight:700\">● Новостройки Уфы</span></div><div style=\"padding:32px 24px\"><h2 style=\"font-size:1.375rem;margin-bottom:12px\">Привет' + ($json.body.payload.userName ? ', ' + $json.body.payload.userName : '') + '!</h2><p style=\"color:rgba(15,25,35,0.65);line-height:1.7;margin-bottom:24px\">Спасибо за интерес к новостройкам Уфы. Мы подготовили персональную подборку под ваш запрос.</p><a href=\"http://localhost:3000/catalog\" style=\"display:inline-block;padding:14px 28px;background:#2F80ED;color:#fff;border-radius:10px;text-decoration:none;font-weight:700\">Смотреть каталог</a></div><div style=\"padding:16px 24px;border-top:1px solid rgba(15,25,35,0.08);font-size:0.75rem;color:rgba(15,25,35,0.4);text-align:center\">Новостройки Уфы</div></body></html>' }}",
+        "options": { "emailType": "html" }
       },
       "id": "email-1-welcome",
       "name": "Email 1: Подборка готова",
-      "type": "n8n-nodes-base.emailSend",
+      "type": "n8n-nodes-base.gmail",
       "typeVersion": 2,
       "position": [900, 300],
       "credentials": {
-        "smtp": { "id": "smtp-cred", "name": "SMTP" }
+        "gmailOAuth2": { "name": "Gmail account" }
       }
     },
 
@@ -71,19 +84,18 @@
     },
     {
       "parameters": {
-        "fromEmail": "no-reply@novostroyki-ufa.ru",
-        "toEmail":   "={{ $json.body.payload.userEmail }}",
-        "subject":   "3 причины купить квартиру в новостройке сейчас",
-        "emailFormat": "html",
-        "html":      "={{ '<html><body style=\"font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#0F1923\"><div style=\"background:#0F1923;padding:24px;text-align:center\"><span style=\"font-size:1rem;color:#fff;font-weight:700\">● Новостройки Уфы</span></div><div style=\"padding:32px 24px\"><h2 style=\"font-size:1.25rem;margin-bottom:20px\">3 причины не откладывать покупку</h2><div style=\"padding:16px;border-radius:12px;background:#EBF4FF;margin-bottom:12px\"><div style=\"font-weight:700;color:#2F80ED;margin-bottom:4px\">📈 Цены растут</div><p style=\"color:rgba(15,25,35,0.65);font-size:0.9rem;margin:0\">Стоимость квадратного метра в Уфе выросла на 15% за год.</p></div><div style=\"padding:16px;border-radius:12px;background:#E8F8EE;margin-bottom:12px\"><div style=\"font-weight:700;color:#27AE60;margin-bottom:4px\">🏗 Льготная ипотека</div><p style=\"color:rgba(15,25,35,0.65);font-size:0.9rem;margin:0\">Семейная ипотека под 6% всё ещё доступна.</p></div><div style=\"padding:16px;border-radius:12px;background:#FFF4E8;margin-bottom:24px\"><div style=\"font-weight:700;color:#F2994A;margin-bottom:4px\">🎯 Индивидуальный подход</div><p style=\"color:rgba(15,25,35,0.65);font-size:0.9rem;margin:0\">AI-консультант подберёт ЖК за 5 минут.</p></div><a href=\"' + $vars.FRONTEND_URL + '/chat\" style=\"display:inline-block;padding:14px 28px;background:#2F80ED;color:#fff;border-radius:10px;text-decoration:none;font-weight:700\">Спросить AI-консультанта</a></div><div style=\"padding:16px 24px;border-top:1px solid rgba(15,25,35,0.08);font-size:0.75rem;color:rgba(15,25,35,0.4);text-align:center\"><a href=\"' + $vars.FRONTEND_URL + '/unsubscribe\" style=\"color:rgba(15,25,35,0.4)\">Отписаться</a></div></body></html>' }}"
+        "sendTo":  "={{ $json.body.payload.userEmail }}",
+        "subject": "3 причины купить квартиру в новостройке сейчас",
+        "message": "={{ '<html><body style=\"font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#0F1923\"><div style=\"background:#0F1923;padding:24px;text-align:center\"><span style=\"font-size:1rem;color:#fff;font-weight:700\">● Новостройки Уфы</span></div><div style=\"padding:32px 24px\"><h2 style=\"font-size:1.25rem;margin-bottom:20px\">3 причины не откладывать покупку</h2><div style=\"padding:16px;border-radius:12px;background:#EBF4FF;margin-bottom:12px\"><div style=\"font-weight:700;color:#2F80ED;margin-bottom:4px\">📈 Цены растут</div><p style=\"color:rgba(15,25,35,0.65);font-size:0.9rem;margin:0\">Стоимость квадратного метра в Уфе выросла на 15% за год.</p></div><div style=\"padding:16px;border-radius:12px;background:#E8F8EE;margin-bottom:12px\"><div style=\"font-weight:700;color:#27AE60;margin-bottom:4px\">🏗 Льготная ипотека</div><p style=\"color:rgba(15,25,35,0.65);font-size:0.9rem;margin:0\">Семейная ипотека под 6% всё ещё доступна.</p></div><div style=\"padding:16px;border-radius:12px;background:#FFF4E8;margin-bottom:24px\"><div style=\"font-weight:700;color:#F2994A;margin-bottom:4px\">🎯 Индивидуальный подход</div><p style=\"color:rgba(15,25,35,0.65);font-size:0.9rem;margin:0\">AI-консультант подберёт ЖК за 5 минут.</p></div><a href=\"http://localhost:3000/chat\" style=\"display:inline-block;padding:14px 28px;background:#2F80ED;color:#fff;border-radius:10px;text-decoration:none;font-weight:700\">Спросить AI-консультанта</a></div><div style=\"padding:16px 24px;border-top:1px solid rgba(15,25,35,0.08);font-size:0.75rem;color:rgba(15,25,35,0.4);text-align:center\">Новостройки Уфы</div></body></html>' }}",
+        "options": { "emailType": "html" }
       },
       "id": "email-2-reasons",
       "name": "Email 2: 3 причины",
-      "type": "n8n-nodes-base.emailSend",
+      "type": "n8n-nodes-base.gmail",
       "typeVersion": 2,
       "position": [1340, 300],
       "credentials": {
-        "smtp": { "id": "smtp-cred", "name": "SMTP" }
+        "gmailOAuth2": { "name": "Gmail account" }
       }
     },
 
@@ -97,24 +109,23 @@
     },
     {
       "parameters": {
-        "fromEmail": "no-reply@novostroyki-ufa.ru",
-        "toEmail":   "={{ $json.body.payload.userEmail }}",
-        "subject":   "Последний шаг к вашей квартире",
-        "emailFormat": "html",
-        "html":      "={{ '<html><body style=\"font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#0F1923\"><div style=\"background:linear-gradient(135deg,#0F1923,#1a2a3a);padding:32px 24px;text-align:center\"><div style=\"font-size:2rem;margin-bottom:8px\">🏠</div><h2 style=\"color:#fff;font-size:1.25rem;margin:0\">Ваша квартира ждёт вас</h2></div><div style=\"padding:32px 24px\"><p style=\"color:rgba(15,25,35,0.65);line-height:1.7;margin-bottom:24px\">Вы уже сделали первый шаг. Осталось один — поговорить с нашим специалистом. Это бесплатно.</p><a href=\"' + $vars.FRONTEND_URL + '/recommendations\" style=\"display:inline-block;padding:14px 28px;background:#2F80ED;color:#fff;border-radius:10px;text-decoration:none;font-weight:700;margin-right:12px\">Смотреть подборку</a><a href=\"' + $vars.FRONTEND_URL + '/chat\" style=\"display:inline-block;padding:14px 28px;background:#F7F9FC;color:#0F1923;border-radius:10px;text-decoration:none;font-weight:600;border:1.5px solid rgba(15,25,35,0.1)\">Спросить AI</a></div><div style=\"padding:16px 24px;border-top:1px solid rgba(15,25,35,0.08);font-size:0.75rem;color:rgba(15,25,35,0.4);text-align:center\"><a href=\"' + $vars.FRONTEND_URL + '/unsubscribe\" style=\"color:rgba(15,25,35,0.4)\">Отписаться</a></div></body></html>' }}"
+        "sendTo":  "={{ $json.body.payload.userEmail }}",
+        "subject": "Последний шаг к вашей квартире",
+        "message": "={{ '<html><body style=\"font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#0F1923\"><div style=\"background:linear-gradient(135deg,#0F1923,#1a2a3a);padding:32px 24px;text-align:center\"><div style=\"font-size:2rem;margin-bottom:8px\">🏠</div><h2 style=\"color:#fff;font-size:1.25rem;margin:0\">Ваша квартира ждёт вас</h2></div><div style=\"padding:32px 24px\"><p style=\"color:rgba(15,25,35,0.65);line-height:1.7;margin-bottom:24px\">Вы уже сделали первый шаг. Осталось один — поговорить с нашим специалистом. Это бесплатно.</p><a href=\"http://localhost:3000/catalog\" style=\"display:inline-block;padding:14px 28px;background:#2F80ED;color:#fff;border-radius:10px;text-decoration:none;font-weight:700;margin-right:12px\">Смотреть каталог</a><a href=\"http://localhost:3000/chat\" style=\"display:inline-block;padding:14px 28px;background:#F7F9FC;color:#0F1923;border-radius:10px;text-decoration:none;font-weight:600;border:1.5px solid rgba(15,25,35,0.1)\">Спросить AI</a></div><div style=\"padding:16px 24px;border-top:1px solid rgba(15,25,35,0.08);font-size:0.75rem;color:rgba(15,25,35,0.4);text-align:center\">Новостройки Уфы</div></body></html>' }}",
+        "options": { "emailType": "html" }
       },
       "id": "email-3-final",
       "name": "Email 3: Дожим",
-      "type": "n8n-nodes-base.emailSend",
+      "type": "n8n-nodes-base.gmail",
       "typeVersion": 2,
       "position": [1780, 300],
       "credentials": {
-        "smtp": { "id": "smtp-cred", "name": "SMTP" }
+        "gmailOAuth2": { "name": "Gmail account" }
       }
     }
   ],
   "connections": {
-    "Webhook /events": {
+    "Webhook /lead-funnel": {
       "main": [[{ "node": "Filter: NEW_LEAD", "type": "main", "index": 0 }]]
     },
     "Filter: NEW_LEAD": {
