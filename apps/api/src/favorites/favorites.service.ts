@@ -16,8 +16,9 @@ export class FavoritesService {
       include: {
         property: {
           include: {
-            developer: { select: { id: true, name: true } },
+            developer: { select: { id: true, name: true, logoUrl: true } },
             images:    { take: 1, orderBy: { sortOrder: 'asc' } },
+            layouts:   true,
           },
         },
       },

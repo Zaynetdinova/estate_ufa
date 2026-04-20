@@ -10,10 +10,32 @@ interface Props {
   property: Property;
 }
 
+const GRADIENTS = [
+  ['#dce8f5', '#b8d4ee'],
+  ['#f5e6dc', '#eec8b8'],
+  ['#dcf5e6', '#b8eec8'],
+  ['#f5dcf5', '#eeb8ee'],
+  ['#f5f5dc', '#eeeeb8'],
+  ['#dce8f5', '#b8cfe8'],
+];
+
+const EMOJIS = ['🏙', '⭐', '🟢', '😊', '🚀', '🏞', '🌿', '🌅', '☀️', '👑', '🌲', '🏆'];
+
+function gradientForId(id: number) {
+  const g = GRADIENTS[id % GRADIENTS.length];
+  return `linear-gradient(135deg, ${g[0]}, ${g[1]})`;
+}
+function emojiForId(id: number) {
+  return EMOJIS[id % EMOJIS.length];
+}
+function fmtMillions(n: number) {
+  return (n / 1_000_000).toFixed(1) + ' млн Р';
+}
+
 export function PropertyCard({ property }: Props) {
-  const track      = useTrackEvent();
+  const track   = useTrackEvent();
   const { has, toggle, load, isLoaded } = useFavoritesStore();
-  const isFav      = has(property.id);
+  const isFav   = has(property.id);
 
   useEffect(() => { if (!isLoaded) load(); }, [isLoaded, load]);
 
@@ -24,23 +46,38 @@ export function PropertyCard({ property }: Props) {
   };
 
   const handleClick = () => {
-    track(
-      'VIEW_PROPERTY',
-      {
-        propertyId:   property.id,
-        propertyName: property.name,
-        propertySlug: property.slug,
-        district:     property.district,
-        priceFrom:    property.priceFrom,
-      },
-      property.id,
-    );
+    track('VIEW_PROPERTY', {
+      propertyId:   property.id,
+      propertyName: property.name,
+      propertySlug: property.slug,
+      district:     property.district,
+      priceFrom:    property.priceFrom,
+    }, property.id);
   };
 
-  const image = property.images[0]?.url;
+  const image    = property.images[0]?.url;
   const deadline = property.deadlineYear
-    ? `${property.deadlineQ ? `${property.deadlineQ} кв. ` : ''}${property.deadlineYear}`
+    ? `${property.deadlineQ ? `Q${property.deadlineQ} ` : ''}${property.deadlineYear}`
+    : property.status === 'ready' ? 'Сдан' : null;
+
+  // Rooms from layouts
+  const rooms = [...new Set(
+    (property.layouts ?? [])
+      .filter((l) => l.rooms !== null)
+      .map((l) => (l.rooms === 0 ? 'studio' : String(l.rooms)))
+  )].sort();
+
+  const areaStr = property.areaMin && property.areaMax
+    ? `от ${property.areaMin} до ${property.areaMax} м²`
+    : property.areaMin
+    ? `от ${property.areaMin} м²`
     : null;
+
+  const devLine = [
+    property.developer?.name,
+    property.floors ? `${property.floors} этажей` : null,
+    areaStr,
+  ].filter(Boolean).join(' · ');
 
   return (
     <Link
@@ -51,159 +88,157 @@ export function PropertyCard({ property }: Props) {
       <article
         style={{
           background:   '#fff',
-          borderRadius: 16,
+          borderRadius: 20,
           border:       '1px solid rgba(15,25,35,0.08)',
           overflow:     'hidden',
-          transition:   'transform 0.2s, box-shadow 0.2s',
+          transition:   'transform 0.25s, box-shadow 0.25s, border-color 0.25s',
           cursor:       'pointer',
         }}
         onMouseEnter={(e) => {
-          (e.currentTarget as HTMLElement).style.transform   = 'translateY(-3px)';
-          (e.currentTarget as HTMLElement).style.boxShadow  = '0 12px 32px rgba(0,0,0,0.12)';
+          const el = e.currentTarget as HTMLElement;
+          el.style.transform   = 'translateY(-4px)';
+          el.style.boxShadow   = '0 16px 48px rgba(0,0,0,0.12)';
+          el.style.borderColor = 'transparent';
         }}
         onMouseLeave={(e) => {
-          (e.currentTarget as HTMLElement).style.transform   = 'translateY(0)';
-          (e.currentTarget as HTMLElement).style.boxShadow  = 'none';
+          const el = e.currentTarget as HTMLElement;
+          el.style.transform   = 'translateY(0)';
+          el.style.boxShadow   = 'none';
+          el.style.borderColor = 'rgba(15,25,35,0.08)';
         }}
       >
-        {/* Image */}
-        <div style={{ position: 'relative', height: 200, background: '#E2E8F0', overflow: 'hidden' }}>
+        {/* ── Image ── */}
+        <div
+          style={{
+            width:          '100%',
+            height:         200,
+            background:     image ? '#E2E8F0' : gradientForId(property.id),
+            position:       'relative',
+            display:        'flex',
+            alignItems:     'center',
+            justifyContent: 'center',
+            overflow:       'hidden',
+          }}
+        >
           {image ? (
-            <img
-              src={image}
-              alt={property.name}
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            />
+            <img src={image} alt={property.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           ) : (
-            <div
-              style={{
-                height:         '100%',
-                display:        'flex',
-                alignItems:     'center',
-                justifyContent: 'center',
-                color:          'rgba(15,25,35,0.3)',
-                fontSize:       '2rem',
-              }}
-            >
-              🏢
-            </div>
+            <span style={{ fontSize: '3rem', opacity: 0.35 }}>{emojiForId(property.id)}</span>
           )}
 
-          {/* Favorite button */}
+          {/* Badges */}
+          <div style={{ position: 'absolute', top: '0.75rem', left: '0.75rem', display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+            {property.isHot && (
+              <span style={{ background: '#F2994A', color: '#fff', padding: '0.2rem 0.6rem', borderRadius: 5, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.04em' }}>
+                🔥 Горячее
+              </span>
+            )}
+            <span
+              style={{
+                background:   property.status === 'ready' ? '#27AE60' : '#2F80ED',
+                color:        '#fff',
+                padding:      '0.2rem 0.6rem',
+                borderRadius: 5,
+                fontSize:     '0.72rem',
+                fontWeight:   700,
+              }}
+            >
+              {property.status === 'ready' ? '✓ Сдан' : 'Строится'}
+            </span>
+          </div>
+
+          {/* Fav button */}
           <button
             onClick={handleFav}
             style={{
               position:       'absolute',
-              top:            10,
-              right:          10,
-              width:          34,
-              height:         34,
+              top:            '0.75rem',
+              right:          '0.75rem',
+              width:          32,
+              height:         32,
               borderRadius:   '50%',
-              background:     isFav ? '#EB5757' : 'rgba(255,255,255,0.85)',
+              background:     'rgba(255,255,255,0.9)',
               border:         'none',
               cursor:         'pointer',
               display:        'flex',
               alignItems:     'center',
               justifyContent: 'center',
-              backdropFilter: 'blur(4px)',
+              fontSize:       '1rem',
               transition:     'all 0.2s',
-              boxShadow:      '0 2px 8px rgba(0,0,0,0.15)',
             }}
+            onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.1)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
             aria-label={isFav ? 'Убрать из избранного' : 'В избранное'}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill={isFav ? '#fff' : 'none'} stroke={isFav ? '#fff' : '#EB5757'} strokeWidth="2">
-              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-            </svg>
+            {isFav ? '❤️' : '🤍'}
           </button>
-
-          {/* Badges */}
-          <div style={{ position: 'absolute', top: 10, left: 10, display: 'flex', gap: 6 }}>
-            {property.isHot && (
-              <span
-                style={{
-                  background:   '#F2994A',
-                  color:        '#fff',
-                  padding:      '3px 8px',
-                  borderRadius: 6,
-                  fontSize:     '0.72rem',
-                  fontWeight:   700,
-                  letterSpacing: '0.04em',
-                }}
-              >
-                ХИТ
-              </span>
-            )}
-            <span
-              style={{
-                background:   property.status === 'ready' ? '#27AE60' : 'rgba(15,25,35,0.7)',
-                color:        '#fff',
-                padding:      '3px 8px',
-                borderRadius: 6,
-                fontSize:     '0.72rem',
-                fontWeight:   600,
-              }}
-            >
-              {property.status === 'ready' ? 'Сдан' : 'Строится'}
-            </span>
-          </div>
         </div>
 
-        {/* Body */}
-        <div style={{ padding: '1rem' }}>
-          <div style={{ fontSize: '0.78rem', color: 'rgba(15,25,35,0.45)', marginBottom: '0.25rem' }}>
-            {property.district}
-            {property.developer && ` · ${property.developer.name}`}
+        {/* ── Body ── */}
+        <div style={{ padding: '1.25rem' }}>
+          <div style={{ fontSize: '0.75rem', color: 'rgba(15,25,35,0.6)', fontWeight: 500, marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            {property.district} район
           </div>
 
-          <div
-            style={{
-              fontFamily:   'Unbounded, sans-serif',
-              fontWeight:   700,
-              fontSize:     '1rem',
-              color:        '#0F1923',
-              marginBottom: '0.75rem',
-              lineHeight:   1.3,
-            }}
-          >
+          <div style={{ fontFamily: 'Unbounded, sans-serif', fontSize: '0.95rem', fontWeight: 700, color: '#0F1923', marginBottom: '0.25rem', lineHeight: 1.3 }}>
             {property.name}
           </div>
 
+          {devLine && (
+            <div style={{ fontSize: '0.8rem', color: 'rgba(15,25,35,0.6)', marginBottom: '0.9rem' }}>
+              {devLine}
+            </div>
+          )}
+
           {/* Price */}
           <div style={{ marginBottom: '0.75rem' }}>
-            <div style={{ fontWeight: 700, fontSize: '1.1rem', color: '#2F80ED' }}>
-              от {Number(property.priceFrom).toLocaleString('ru')} ₽
+            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#2F80ED' }}>
+              {fmtMillions(Number(property.priceFrom))}
+              {property.priceTo && (
+                <span style={{ fontSize: '0.75rem', fontWeight: 500, color: 'rgba(15,25,35,0.6)' }}>
+                  {' – ' + fmtMillions(Number(property.priceTo))}
+                </span>
+              )}
             </div>
-            {property.priceM2 && (
-              <div style={{ fontSize: '0.78rem', color: 'rgba(15,25,35,0.45)', marginTop: 2 }}>
-                {property.priceM2.toLocaleString('ru')} ₽/м²
-              </div>
-            )}
           </div>
 
-          {/* Footer */}
-          <div
-            style={{
-              display:        'flex',
-              justifyContent: 'space-between',
-              alignItems:     'center',
-              borderTop:      '1px solid rgba(15,25,35,0.06)',
-              paddingTop:     '0.75rem',
-              fontSize:       '0.8125rem',
-            }}
-          >
-            <span style={{ color: 'rgba(15,25,35,0.55)' }}>
-              {property.areaMin && property.areaMax
-                ? `${property.areaMin}–${property.areaMax} м²`
-                : property.floors
-                ? `${property.floors} эт.`
-                : null}
-            </span>
-            {deadline && (
-              <span style={{ color: 'rgba(15,25,35,0.45)' }}>
-                Сдача {deadline}
+          {/* Meta */}
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+            {property.priceM2 && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.78rem', color: 'rgba(15,25,35,0.6)' }}>
+                📐 {Number(property.priceM2).toLocaleString('ru')} ₽/м²
+              </span>
+            )}
+            {rooms.length > 0 && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.78rem', color: 'rgba(15,25,35,0.6)' }}>
+                🏠 {rooms.join(', ')}
               </span>
             )}
           </div>
+        </div>
+
+        {/* ── Footer ── */}
+        <div
+          style={{
+            padding:        '0.75rem 1.25rem',
+            borderTop:      '1px solid rgba(15,25,35,0.08)',
+            display:        'flex',
+            justifyContent: 'space-between',
+            alignItems:     'center',
+          }}
+        >
+          <div style={{ fontSize: '0.78rem', color: 'rgba(15,25,35,0.6)' }}>
+            {deadline ? (
+              <>Сдача: <strong style={{ color: '#0F1923' }}>{deadline}</strong></>
+            ) : (
+              <span>Срок не указан</span>
+            )}
+          </div>
+          {property.priceM2 && (
+            <div style={{ fontSize: '0.78rem', color: 'rgba(15,25,35,0.6)', fontWeight: 500 }}>
+              {Number(property.priceM2).toLocaleString('ru')} ₽/м²
+            </div>
+          )}
         </div>
       </article>
     </Link>

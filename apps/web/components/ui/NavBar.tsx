@@ -5,12 +5,12 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/auth.store';
 
 const NAV_LINKS = [
-  { href: '/catalog',         label: 'Каталог' },
-  { href: '/map',             label: 'Карта' },
-  { href: '/chat',            label: 'AI-консультант' },
-  { href: '/recommendations', label: 'Подборка' },
-  { href: '/calculator',      label: 'Калькулятор' },
-  { href: '/favorites',       label: '❤' },
+  { href: '/catalog',         label: '🏗 Каталог' },
+  { href: '/map',             label: '🗺 Карта' },
+  { href: '/calculator',      label: '📊 Калькулятор' },
+  { href: '/chat',            label: '🤖 AI-помощник' },
+  // { href: '/recommendations', label: '📋 Подборка' },
+  { href: '/favorites',       label: '❤️ Избранное' },
 ];
 
 export function NavBar() {
@@ -41,7 +41,7 @@ export function NavBar() {
       >
         {/* Logo */}
         <Link
-          href="/"
+          href="/catalog"
           style={{
             fontFamily:     'Unbounded, sans-serif',
             fontSize:       '0.9rem',

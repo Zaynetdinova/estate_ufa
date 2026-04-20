@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { authApi, type User } from '../api';
+import { useFavoritesStore } from './favorites.store';
 
 interface AuthState {
   user:        User | null;
@@ -28,16 +29,21 @@ export const useAuthStore = create<AuthState>()(
         const res = await authApi.login({ email, password });
         localStorage.setItem('accessToken', res.accessToken);
         set({ user: res.user, accessToken: res.accessToken });
+        useFavoritesStore.getState().reset();
+        useFavoritesStore.getState().load();
       },
 
       register: async (email, password, name) => {
         const res = await authApi.register({ email, password, name });
         localStorage.setItem('accessToken', res.accessToken);
         set({ user: res.user, accessToken: res.accessToken });
+        useFavoritesStore.getState().reset();
+        useFavoritesStore.getState().load();
       },
 
       logout: () => {
         localStorage.removeItem('accessToken');
+        useFavoritesStore.getState().reset();
         set({ user: null, accessToken: null, sessionId: generateSessionId() });
       },
 

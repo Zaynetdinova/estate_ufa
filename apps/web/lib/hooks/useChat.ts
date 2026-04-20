@@ -25,19 +25,20 @@ export function useChat(): UseChatReturn {
   const user      = useAuthStore((s) => s.user);
   const track     = useTrackEvent();
 
-  // Загрузить историю при монтировании
+  // Загрузить историю при монтировании и при смене пользователя
   useEffect(() => {
     if (user) {
-      // Авторизован — берём из БД
-      chatApi.history(sessionId).then(setMessages).catch(() => {});
+      // Авторизован — берём всю историю из БД (без фильтра по sessionId)
+      chatApi.history().then(setMessages).catch(() => {});
     } else {
       // Гость — берём из sessionStorage
+      setMessages([]);
       try {
         const saved = sessionStorage.getItem(STORAGE_KEY(sessionId));
         if (saved) setMessages(JSON.parse(saved));
       } catch {}
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Сохранять историю гостя в sessionStorage при каждом изменении
   useEffect(() => {

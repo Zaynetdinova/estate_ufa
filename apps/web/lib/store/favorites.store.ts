@@ -7,6 +7,7 @@ interface FavoritesState {
   isLoaded:   boolean;
   toggle:     (propertyId: number) => Promise<void>;
   load:       () => Promise<void>;
+  reset:      () => void;
   has:        (propertyId: number) => boolean;
 }
 
@@ -25,6 +26,8 @@ export const useFavoritesStore = create<FavoritesState>((set, get) => ({
   isLoaded: false,
 
   has: (propertyId) => get().ids.has(propertyId),
+
+  reset: () => set({ ids: new Set<number>(), isLoaded: false }),
 
   load: async () => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
