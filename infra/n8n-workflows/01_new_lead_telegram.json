@@ -26,7 +26,7 @@
     },
     {
       "parameters": {
-        "chatId": "={{ $vars.TELEGRAM_CHAT_ID }}",
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
         "text": "={{ $json.text }}",
         "additionalFields": {
           "parse_mode": "Markdown",
@@ -67,7 +67,7 @@
     },
     {
       "parameters": {
-        "chatId": "={{ $vars.TELEGRAM_CHAT_ID }}",
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
         "text": "🚨 *ГОРЯЧИЙ ЛИД #{{ $json.leadId }}* — скор {{ $json.score }}!\nПозвони в течение 5 минут.",
         "additionalFields": { "parse_mode": "Markdown" }
       },
