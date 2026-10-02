@@ -4,6 +4,40 @@
 
 > **Статус:** учебный прототип для портфолио. Каталог и FAQ содержат демонстрационные данные. Публичный production-деплой не настроен; проект запускается локально через Docker Compose.
 
+## Публикация фронтенда на Vercel
+
+Фронтенд Next.js можно развернуть на Vercel отдельно от API. Текущая конфигурация рассчитана на монорепозиторий, где Vercel-проект указывает `apps/web` как **Root Directory**. Для Vercel используется стандартный runtime Next.js; Docker-сборка по-прежнему использует режим `standalone`.
+
+### Настройки проекта Vercel
+
+При импорте GitHub-репозитория `Zaynetdinova/estate_ufa` укажите:
+
+| Настройка | Значение |
+|---|---|
+| Framework Preset | Next.js |
+| Root Directory | `apps/web` |
+| Install Command | `npm install` (или значение по умолчанию Vercel) |
+| Build Command | `npm run build` (или значение по умолчанию Vercel) |
+| Output Directory | оставить значение по умолчанию |
+
+### Переменные окружения
+
+Добавьте их в **Project → Settings → Environment Variables**. Значения с префиксом `NEXT_PUBLIC_` попадают в клиентский bundle и должны содержать только публичные данные.
+
+| Переменная | Значение |
+|---|---|
+| `NEXT_PUBLIC_API_URL` | Публичный HTTPS URL развернутого NestJS API, например `https://api.example.com` |
+| `NEXT_PUBLIC_SITE_URL` | URL сайта Vercel или своего домена, например `https://estate-ufa.vercel.app` |
+| `NEXT_PUBLIC_YANDEX_MAPS_KEY` | Публичный ключ JavaScript API Яндекс Карт с ограничением по домену сайта |
+
+После получения домена Vercel добавьте его в разрешённые origin API через `FRONTEND_URL`, затем выполните новый деплой фронтенда. API должен быть доступен из публичного интернета по HTTPS. Значение `http://localhost:4000` работает только для локальной разработки и в production использоваться не должно.
+
+Vercel публикует только `apps/web`: PostgreSQL/pgvector, Redis, NestJS API и n8n должны быть развернуты отдельно и доступны по публичным адресам. Docker-имена сервисов (`api`, `postgres`, `redis`, `n8n`) снаружи Docker-сети не маршрутизируются. Не добавляйте секреты OpenAI, Telegram, Gmail OAuth или пароль базы в переменные `NEXT_PUBLIC_*`.
+
+### Текущий статус
+
+Конфигурация фронтенда подготовлена для Vercel, но публикация требует подключить GitHub-репозиторий к Vercel и сначала предоставить публичный HTTPS адрес API. Без внешнего API страницы сайта могут открыться, но каталог, авторизация, чат и другие API-функции работать не будут.
+
 ## Задача и решение
 
 Покупатель описывает запрос обычным языком, например: «Ищу двушку до 7 млн рядом с центром». Сервис извлекает параметры, ищет подходящие планировки в PostgreSQL и формирует ответ. Для вопросов о каталоге и правилах консультант использует RAG и показывает источники.
@@ -142,7 +176,7 @@ xychart-beta
 
 | Область | Технологии |
 |---|---|
-| Frontend | Next.js 14, React 18, TypeScript, Zustand |
+| Frontend | Next.js 15.5.27, React 18, TypeScript, Zustand |
 | Backend | NestJS 10, TypeScript, REST API, JSON, Swagger / OpenAPI |
 | Основная БД | PostgreSQL 16, Prisma ORM 5 |
 | Векторный поиск | pgvector, SQL-оператор cosine distance |

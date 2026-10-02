@@ -50,12 +50,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  const propertyRoutes: MetadataRoute.Sitemap = properties.map((p) => ({
-    url:             `${BASE_URL}/catalog/${p.slug}`,
-    lastModified:    new Date(p.updatedAt),
-    changeFrequency: 'weekly' as const,
-    priority:        0.8,
-  }));
+  const propertyRoutes: MetadataRoute.Sitemap = properties
+    .filter((p) => typeof p.slug === 'string' && p.slug.length > 0)
+    .map((p) => {
+      const parsedDate = p.updatedAt ? new Date(p.updatedAt) : null;
+      const lastModified = parsedDate && !Number.isNaN(parsedDate.getTime())
+        ? parsedDate
+        : new Date();
+
+      return {
+        url:             `${BASE_URL}/catalog/${p.slug}`,
+        lastModified,
+        changeFrequency: 'weekly' as const,
+        priority:        0.8,
+      };
+    });
 
   return [...staticRoutes, ...propertyRoutes];
 }

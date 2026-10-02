@@ -5,13 +5,14 @@ import { PropertyDetailClient } from '@/components/catalog/PropertyDetailClient'
 import type { Property } from '@/lib/api';
 
 interface PageProps {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://estate-ufa.ru';
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const property = await propertiesApi.bySlug(params.slug).catch(() => null);
+  const { slug } = await params;
+  const property = await propertiesApi.bySlug(slug).catch(() => null);
   if (!property) return { title: 'ЖК не найден' };
   return {
     title:       `${property.name} — Новостройки Уфы`,
@@ -72,7 +73,8 @@ function buildJsonLd(property: Property) {
 }
 
 export default async function PropertyPage({ params }: PageProps) {
-  const property = await propertiesApi.bySlug(params.slug).catch(() => null);
+  const { slug } = await params;
+  const property = await propertiesApi.bySlug(slug).catch(() => null);
   if (!property) notFound();
 
   return (

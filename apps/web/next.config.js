@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',
+  // Docker uses the standalone server; Vercel manages its own Next.js runtime.
+  output: process.env.VERCEL ? undefined : 'standalone',
+  outputFileTracingRoot: __dirname,
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: '**' },
