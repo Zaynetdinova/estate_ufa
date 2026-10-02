@@ -1,0 +1,41 @@
+[
+  {
+    "id": "price-from-direct",
+    "query": "Что означает цена «от»?",
+    "expected": "answer_from_source",
+    "expectedSourceHeading": "Что означает цена «от»?"
+  },
+  {
+    "id": "price-from-paraphrase",
+    "query": "Если в каталоге указано 4 млн рублей, значит ли это, что я точно куплю квартиру за эту сумму?",
+    "expected": "answer_from_source",
+    "expectedSourceHeading": "Что означает цена «от»?"
+  },
+  {
+    "id": "catalog-data",
+    "query": "Можно ли считать цены и наличие в каталоге актуальными предложениями?",
+    "expected": "answer_from_source",
+    "expectedSourceHeading": "Какие сведения есть в каталоге?"
+  },
+  {
+    "id": "delivery-date",
+    "query": "Можно ли полагаться на указанный срок сдачи дома?",
+    "expected": "answer_from_source",
+    "expectedSourceHeading": "Можно ли полагаться на сроки сдачи и статус дома?"
+  },
+  {
+    "id": "mortgage-rate",
+    "query": "Какие застройщики Уфы предлагают семейную ипотеку под 3%?",
+    "expected": "abstain"
+  },
+  {
+    "id": "bank-terms",
+    "query": "Какой банк одобрит мне ипотеку и какой будет платёж?",
+    "expected": "abstain"
+  },
+  {
+    "id": "legal-advice",
+    "query": "Какие юридические документы я обязан подписать при покупке?",
+    "expected": "abstain"
+  }
+]

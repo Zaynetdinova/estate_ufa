@@ -125,6 +125,48 @@ export class PropertiesService {
     return property;
   }
 
+  /**
+   * Поиск ЖК по проверяемым условиям из диалога.
+   * Цена и число комнат проверяются на уровне доступной планировки,
+   * а не по общей площади или минимальной цене всего ЖК.
+   */
+  async findForAiSearch(filters: { rooms: number; budgetMax: number; district?: string }) {
+    return this.prisma.property.findMany({
+      where: {
+        ...(filters.district ? { district: filters.district } : {}),
+        layouts: {
+          some: {
+            rooms: filters.rooms,
+            isAvailable: true,
+            priceFrom: { lte: BigInt(filters.budgetMax) },
+          },
+        },
+      },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        district: true,
+        address: true,
+        status: true,
+        deadlineQ: true,
+        deadlineYear: true,
+        layouts: {
+          where: {
+            rooms: filters.rooms,
+            isAvailable: true,
+            priceFrom: { lte: BigInt(filters.budgetMax) },
+          },
+          orderBy: { priceFrom: 'asc' },
+          take: 3,
+          select: { rooms: true, areaMin: true, areaMax: true, priceFrom: true, priceTo: true },
+        },
+      },
+      orderBy: [{ isHot: 'desc' }, { viewsCount: 'desc' }],
+      take: 8,
+    });
+  }
+
   /** Возвращает slug + updatedAt для sitemap.xml */
   async findSlugs() {
     return this.prisma.property.findMany({
