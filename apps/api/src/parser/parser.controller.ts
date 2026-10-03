@@ -1,9 +1,12 @@
 import { Controller, Post, Query, UseGuards } from '@nestjs/common';
 import { ParserService } from './parser.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles } from '../common/decorators/roles.decorator';
 
 @Controller('parser')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('admin')
 export class ParserController {
   constructor(private readonly parserService: ParserService) {}
 

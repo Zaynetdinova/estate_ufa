@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { ExecutionContext } from '@nestjs/common';
 
 import { PrismaModule }          from './prisma/prisma.module';
 import { CacheModule }           from './cache/cache.module';
@@ -15,17 +16,24 @@ import { RecommendationsModule } from './recommendations/recommendations.module'
 import { ChatModule }            from './chat/chat.module';
 import { FavoritesModule }       from './favorites/favorites.module';
 import { ParserModule }          from './parser/parser.module';
+import { AuthController }        from './auth/auth.controller';
+import { ChatController }        from './chat/chat.controller';
+
+// Именованные лимиты в @nestjs/throttler применяются ко всем маршрутам сразу,
+// поэтому chat и auth явно ограничиваем своими контроллерами.
+const onlyFor = (controller: Function) =>
+  (context: ExecutionContext) => context.getClass() !== controller;
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
 
-    // Rate limiting: 60 запросов / минуту глобально
-    // Чат: переопределяется на 30/мин в ChatController через @Throttle()
+    // Rate limiting по IP: 60 запросов / минуту на любой маршрут,
+    // дополнительно 30/мин на чат и 10/мин на регистрацию и вход
     ThrottlerModule.forRoot([
       { name: 'global', ttl: 60_000, limit: 60 },
-      { name: 'chat',   ttl: 60_000, limit: 30 },
-      { name: 'auth',   ttl: 60_000, limit: 10 },
+      { name: 'chat',   ttl: 60_000, limit: 30, skipIf: onlyFor(ChatController) },
+      { name: 'auth',   ttl: 60_000, limit: 10, skipIf: onlyFor(AuthController) },
     ]),
 
     PrismaModule,    // @Global

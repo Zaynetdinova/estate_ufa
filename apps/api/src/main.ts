@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
@@ -7,7 +8,11 @@ import { BigIntInterceptor } from './common/interceptors/bigint.interceptor';
 
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  // За прокси Vercel берём IP клиента из X-Forwarded-For,
+  // иначе rate limit считает всех посетителей одним адресом
+  if (process.env.VERCEL) app.set('trust proxy', 1);
 
   // ── Security ──────────────────────────────────────────────────────────
   app.use(

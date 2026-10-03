@@ -53,14 +53,23 @@ export function LeadsDashboard() {
   const [filterStatus,  setFilterStatus]  = useState<string>('all');
   const [updating,      setUpdating]      = useState<number | null>(null);
   const [selected,      setSelected]      = useState<Lead | null>(null);
+  const [denied,        setDenied]        = useState(false);
 
   const fetchLeads = useCallback(async () => {
     const token = localStorage.getItem('accessToken');
-    if (!token) return;
+    if (!token) {
+      setDenied(true);
+      setLoading(false);
+      return;
+    }
     try {
       const res  = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/leads`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      if (res.status === 401 || res.status === 403) {
+        setDenied(true);
+        return;
+      }
       const data = await res.json();
       setLeads(Array.isArray(data) ? data : []);
     } finally {
@@ -98,6 +107,14 @@ export function LeadsDashboard() {
     hot:     leads.filter((l) => l.score >= 10).length,
     avgScore: leads.length ? Math.round(leads.reduce((s, l) => s + l.score, 0) / leads.length) : 0,
   };
+
+  if (denied) {
+    return (
+      <div style={{ textAlign: 'center', padding: '4rem 1rem', color: 'rgba(15,25,35,0.6)' }}>
+        Нет доступа. Панель лидов доступна только менеджерам.
+      </div>
+    );
+  }
 
   return (
     <div style={{ maxWidth: 1400, margin: '0 auto', padding: '1.5rem 1rem' }}>
