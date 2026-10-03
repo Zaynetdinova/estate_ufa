@@ -4,6 +4,20 @@
 
 > **Статус:** учебный прототип для портфолио. Каталог и FAQ содержат демонстрационные данные. Публичный production-деплой не настроен; проект запускается локально через Docker Compose.
 
+## Публикация: Vercel + Neon
+
+Онлайн-версия состоит из трёх частей:
+
+| Часть | Где | Root Directory |
+|---|---|---|
+| PostgreSQL + pgvector | Neon | — |
+| NestJS API | Vercel (Framework Preset: NestJS) | `apps/api` |
+| Next.js сайт | Vercel (Framework Preset: Next.js) | `apps/web` |
+
+Схема БД загружается командой `npm run db:push` из `apps/api` (с `DATABASE_URL` от Neon), демо-данные загружает `npm run db:seed`.
+
+Переменные окружения API на Vercel: `DATABASE_URL` (pooled-строка подключения Neon), `JWT_SECRET`, `FRONTEND_URL` (URL сайта, через запятую можно указать несколько), `NODE_ENV=production`, `OPENAI_API_KEY` (нужен для AI-чата и RAG). `REDIS_URL` и `N8N_WEBHOOK_URL` необязательны: без них API работает без кэша и автоматизаций.
+
 ## Публикация фронтенда на Vercel
 
 Фронтенд Next.js можно развернуть на Vercel отдельно от API. Текущая конфигурация рассчитана на монорепозиторий, где Vercel-проект указывает `apps/web` как **Root Directory**. Для Vercel используется стандартный runtime Next.js; Docker-сборка по-прежнему использует режим `standalone`.
