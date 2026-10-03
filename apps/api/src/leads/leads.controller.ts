@@ -3,6 +3,8 @@ import { LeadsService } from './leads.service';
 import { CreateLeadDto, UpdateLeadStatusDto } from './leads.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { OptionalJwtGuard } from '../common/guards/optional-jwt.guard';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles } from '../common/decorators/roles.decorator';
 
 @Controller('leads')
 export class LeadsController {
@@ -23,9 +25,10 @@ export class LeadsController {
 
   /**
    * GET /leads
-   * Список всех лидов (только для менеджеров — в production добавить RolesGuard)
+   * Список всех лидов (только manager/admin)
    */
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('manager', 'admin')
   @Get()
   findAll() {
     return this.leadsService.findAll();
@@ -34,7 +37,8 @@ export class LeadsController {
   /**
    * GET /leads/:id
    */
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('manager', 'admin')
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.leadsService.findOne(id);
@@ -43,7 +47,8 @@ export class LeadsController {
   /**
    * PATCH /leads/:id/status
    */
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('manager', 'admin')
   @Patch(':id/status')
   updateStatus(
     @Param('id', ParseIntPipe) id: number,
