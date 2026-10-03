@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { PrismaService } from '../prisma/prisma.service';
 
 const EMBEDDING_MODEL = 'text-embedding-3-small';
-const KNOWLEDGE_DIR = join(process.cwd(), 'knowledge-base');
+const KNOWLEDGE_DIR = join(__dirname, '..', '..', 'knowledge-base');
 const MAX_CHUNK_CHARS = 1200;
 // Initial cutoff; tune against real questions as the knowledge base grows.
 const MIN_SIMILARITY = 0.45;
@@ -118,17 +118,18 @@ export class KnowledgeService implements OnModuleInit {
         encoding_format: 'float',
       });
 
-      await this.prisma.$transaction(async (transaction) => {
-        await transaction.$executeRaw(Prisma.sql`DELETE FROM rag_chunks WHERE source = ${source}`);
-        for (let index = 0; index < chunks.length; index += 1) {
-          const chunk = chunks[index];
-          const vector = this.toVectorLiteral(embedded.data[index].embedding);
-          await transaction.$executeRaw(Prisma.sql`
-            INSERT INTO rag_chunks (source, title, chunk_index, content, document_hash, embedding)
-            VALUES (${source}, ${chunk.title}, ${index}, ${chunk.content}, ${documentHash}, ${vector}::vector)
-          `);
-        }
+      const rows = chunks.map((chunk, index) => {
+        const vector = this.toVectorLiteral(embedded.data[index].embedding);
+        return Prisma.sql`(${source}, ${chunk.title}, ${index}, ${chunk.content}, ${documentHash}, ${vector}::vector)`;
       });
+
+      await this.prisma.$transaction([
+        this.prisma.$executeRaw(Prisma.sql`DELETE FROM rag_chunks WHERE source = ${source}`),
+        this.prisma.$executeRaw(Prisma.sql`
+          INSERT INTO rag_chunks (source, title, chunk_index, content, document_hash, embedding)
+          VALUES ${Prisma.join(rows)}
+        `),
+      ]);
 
       this.logger.log(`Indexed ${chunks.length} knowledge chunks from ${source}`);
     }

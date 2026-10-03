@@ -13,7 +13,11 @@ export class CacheService implements OnModuleDestroy {
   }
 
   private async connect() {
-    const url = this.config.get<string>('REDIS_URL', 'redis://localhost:6379');
+    const url = this.config.get<string>('REDIS_URL');
+    if (!url) {
+      this.logger.warn('REDIS_URL is not set — running without cache');
+      return;
+    }
     try {
       this.client = createClient({ url }) as RedisClientType;
       this.client.on('error', (err) => {
