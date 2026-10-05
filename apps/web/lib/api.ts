@@ -141,6 +141,11 @@ export const authApi = {
 
 // ── Properties ───────────────────────────────────────────────
 
+// SSR-запросы каталога кешируются Next.js на минуту: иначе каждый просмотр
+// страницы бьёт в API с IP сервера Vercel и общие для всех посетителей лимиты.
+// В браузере опция next игнорируется.
+const CACHED_GET: RequestInit = { next: { revalidate: 60 } };
+
 export const propertiesApi = {
   list: (params: Record<string, string | number | boolean | undefined> = {}) => {
     const query = new URLSearchParams(
@@ -150,10 +155,11 @@ export const propertiesApi = {
     ).toString();
     return apiFetch<{ items: Property[]; pagination: { total: number; page: number; pages: number } }>(
       `/properties${query ? `?${query}` : ''}`,
+      CACHED_GET,
     );
   },
 
-  bySlug: (slug: string) => apiFetch<Property>(`/properties/${slug}`),
+  bySlug: (slug: string) => apiFetch<Property>(`/properties/${slug}`, CACHED_GET),
 };
 
 // ── Events ───────────────────────────────────────────────────
