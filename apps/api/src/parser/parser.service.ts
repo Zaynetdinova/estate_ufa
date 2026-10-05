@@ -5,8 +5,9 @@ import type { ParsedProperty, ParseResult } from './parser.types';
 /**
  * Сервис парсинга новостроек.
  *
- * Для реального парсинга ufanovostroyka.ru нужен puppeteer:
- *   npm i puppeteer  (уже в devDeps как опция)
+ * Для реального парсинга ufanovostroyka.ru нужен puppeteer — он не входит
+ * в зависимости (на Vercel Chrome не запускается, а сборка скачивала бы его зря).
+ * Локально: npm i puppeteer. Без него парсер возвращает mock-данные.
  *
  * Здесь реализована полная инфраструктура — подставь реальный
  * scrapeSource() под конкретный сайт.
@@ -67,9 +68,11 @@ export class ParserService {
 
   private async scrapeUfaNovostroyka(): Promise<ParsedProperty[]> {
     // Puppeteer подключается динамически — не ломает запуск без него
-    let puppeteer: typeof import('puppeteer');
+    // Имя модуля в переменной: TypeScript не требует установленного пакета для сборки
+    const moduleName = 'puppeteer';
+    let puppeteer: any;
     try {
-      puppeteer = await import('puppeteer');
+      puppeteer = await import(moduleName);
     } catch {
       this.logger.warn('Puppeteer not installed. Run: npm i puppeteer');
       return this.getMockData(); // возвращаем mock для разработки
