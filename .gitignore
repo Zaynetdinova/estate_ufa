@@ -30,9 +30,6 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Prisma
-apps/api/prisma/migrations/
-
 # Docker volumes (не нужны в репо)
 postgres_data/
 redis_data/

@@ -3,29 +3,31 @@
 // ============================================================
 
 generator client {
-  provider      = "prisma-client-js"
-  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "rhel-openssl-3.0.x"]
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+  binaryTargets   = ["native", "linux-musl-openssl-3.0.x", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
 }
 
 // ============================================================
 // DEVELOPERS — Застройщики
 // ============================================================
 model Developer {
-  id            Int        @id @default(autoincrement())
-  name          String     @db.VarChar(200)
-  logoUrl       String?    @map("logo_url")
+  id            Int      @id @default(autoincrement())
+  name          String   @db.VarChar(200)
+  logoUrl       String?  @map("logo_url")
   website       String?
-  phone         String?    @db.VarChar(20)
-  rating        Decimal?   @db.Decimal(3, 1)
-  projectsCount Int        @default(0) @map("projects_count")
-  createdAt     DateTime   @default(now()) @map("created_at")
+  phone         String?  @db.VarChar(20)
+  rating        Decimal? @db.Decimal(3, 1)
+  projectsCount Int      @default(0) @map("projects_count")
+  createdAt     DateTime @default(now()) @map("created_at")
 
-  properties    Property[]
+  properties Property[]
 
   @@map("developers")
 }
@@ -59,12 +61,12 @@ model Property {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  developer    Developer?      @relation(fields: [developerId], references: [id])
-  images       PropertyImage[]
-  layouts      Layout[]
-  favorites    Favorite[]
-  calcHistory  CalcHistory[]
-  userEvents   UserEvent[]
+  developer   Developer?      @relation(fields: [developerId], references: [id])
+  images      PropertyImage[]
+  layouts     Layout[]
+  favorites   Favorite[]
+  calcHistory CalcHistory[]
+  userEvents  UserEvent[]
 
   @@index([district])
   @@index([deadlineYear, deadlineQ])
@@ -77,14 +79,14 @@ model Property {
 // PROPERTY_IMAGES — Изображения ЖК
 // ============================================================
 model PropertyImage {
-  id         Int      @id @default(autoincrement())
-  propertyId Int      @map("property_id")
+  id         Int     @id @default(autoincrement())
+  propertyId Int     @map("property_id")
   url        String
-  alt        String?  @db.VarChar(200)
-  sortOrder  Int      @default(0) @map("sort_order") @db.SmallInt
-  type       String   @default("exterior") @db.VarChar(20) // exterior | interior | lobby
+  alt        String? @db.VarChar(200)
+  sortOrder  Int     @default(0) @map("sort_order") @db.SmallInt
+  type       String  @default("exterior") @db.VarChar(20) // exterior | interior | lobby
 
-  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
   @@map("property_images")
 }
@@ -103,7 +105,7 @@ model Layout {
   imageUrl    String?  @map("image_url")
   isAvailable Boolean  @default(true) @map("is_available")
 
-  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
   @@map("layouts")
 }
@@ -126,7 +128,7 @@ model User {
   // Пример: { "rooms": [2,3], "districts": ["Советский"], "deadline": "2025" }
   budgetMin       Int?    @map("budget_min")
   budgetMax       Int?    @map("budget_max")
-  intent          String? @db.VarChar(10) @map("intent")
+  intent          String? @map("intent") @db.VarChar(10)
   // intent: 'low' | 'medium' | 'high' — уровень готовности к покупке
 
   favorites    Favorite[]
@@ -147,8 +149,8 @@ model Favorite {
   propertyId Int      @map("property_id")
   createdAt  DateTime @default(now()) @map("created_at")
 
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
   @@unique([userId, propertyId])
   @@index([userId])
@@ -190,7 +192,7 @@ model ChatMessage {
   tokensUsed Int?     @map("tokens_used")
   createdAt  DateTime @default(now()) @map("created_at")
 
-  user       User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([sessionId])
@@ -218,8 +220,8 @@ model UserEvent {
   propertyId Int?     @map("property_id")
   createdAt  DateTime @default(now()) @map("created_at")
 
-  user       User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
-  property   Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  user     User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  property Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([eventType])
@@ -249,10 +251,29 @@ model Lead {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([status])
   @@index([score])
   @@index([createdAt])
   @@map("leads")
+}
+
+// ============================================================
+// RAG — фрагменты базы знаний с embeddings (pgvector)
+// Читается и пишется raw SQL в KnowledgeService: Prisma 5 не умеет
+// работать со значениями vector, но так таблица управляется миграциями.
+// ============================================================
+model RagChunk {
+  id           BigInt                      @id @default(autoincrement())
+  source       String
+  title        String
+  chunkIndex   Int                         @map("chunk_index")
+  content      String
+  documentHash String                      @map("document_hash") @db.Char(64)
+  embedding    Unsupported("vector(1536)")
+  updatedAt    DateTime                    @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([source, chunkIndex])
+  @@map("rag_chunks")
 }

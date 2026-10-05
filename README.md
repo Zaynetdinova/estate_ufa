@@ -18,7 +18,17 @@
 
 Redis и n8n в онлайн-версии не развёрнуты: API работает без кэша и автоматизаций. Полный набор сервисов поднимается локально через Docker Compose (см. ниже).
 
-Схема БД загружается командой `npm run db:push` из `apps/api` (с `DATABASE_URL` от Neon), демо-данные загружает `npm run db:seed`.
+### Схема базы данных
+
+Схема управляется миграциями Prisma (`apps/api/prisma/migrations`), включая расширение pgvector и таблицу `rag_chunks`. Команды запускаются из `apps/api`; для миграций используйте **прямую** строку подключения Neon (хост без `-pooler`):
+
+```bash
+DATABASE_URL="<direct-url>" npm run db:deploy   # применить новые миграции
+DATABASE_URL="<direct-url>" npm run db:status   # проверить состояние
+DATABASE_URL="<direct-url>" npm run db:seed     # демо-данные
+```
+
+Изменение схемы: поправить `schema.prisma`, локально выполнить `npm run db:migrate -- --name <описание>`, закоммитить новую папку миграции и после мержа выполнить `db:deploy` для Neon.
 
 ### Переменные окружения
 
@@ -240,7 +250,7 @@ cp .env.example .env
 ```bash
 docker compose up -d postgres redis
 docker compose build api web
-docker compose run --rm --no-deps api npx prisma db push
+docker compose run --rm --no-deps api npx prisma migrate deploy
 docker compose run --rm --no-deps api npm run db:seed
 docker compose up -d --build
 ```
