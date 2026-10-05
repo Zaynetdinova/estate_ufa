@@ -6,6 +6,7 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
 import { N8nModule } from '../n8n/n8n.module';
+import { getJwtSecret } from './jwt-secret';
 
 @Module({
   imports: [
@@ -15,7 +16,7 @@ import { N8nModule } from '../n8n/n8n.module';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        secret:     config.get<string>('JWT_SECRET', 'change-me'),
+        secret:     getJwtSecret(config),
         signOptions: { expiresIn: config.get<string>('JWT_EXPIRES_IN', '7d') },
       }),
     }),

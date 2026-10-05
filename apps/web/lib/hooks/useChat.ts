@@ -14,6 +14,8 @@ export interface UseChatReturn {
 }
 
 const STORAGE_KEY = (sessionId: string) => `chat:${sessionId}`;
+// API принимает не больше 50 сообщений; модели всё равно нужны только последние
+const MAX_SENT_MESSAGES = 20;
 
 export function useChat(): UseChatReturn {
   const [messages,  setMessages]  = useState<ChatMessage[]>([]);
@@ -71,7 +73,7 @@ export function useChat(): UseChatReturn {
 
     try {
       await streamChatMessage(
-        nextMessages,
+        nextMessages.slice(-MAX_SENT_MESSAGES),
         sessionId,
         (chunk) => {
           setMessages((prev) => {

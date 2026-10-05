@@ -38,6 +38,7 @@ export function ChatInput({ onSend, disabled }: Props) {
       <textarea
         ref={textareaRef}
         value={value}
+        maxLength={4000}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}
         onInput={handleInput}
