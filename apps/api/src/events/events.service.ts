@@ -53,13 +53,18 @@ export class EventsService {
   }
 
   /** Количество просмотренных ЖК пользователем */
+  /** Количество разных ЖК, которые смотрел пользователь (повторные просмотры не считаются). */
   async countViewedProperties(userId: number): Promise<number> {
-    return this.prisma.userEvent.count({
+    const viewed = await this.prisma.userEvent.findMany({
       where: {
         userId,
         eventType: N8nEventType.VIEW_PROPERTY,
+        propertyId: { not: null },
       },
+      distinct: ['propertyId'],
+      select: { propertyId: true },
     });
+    return viewed.length;
   }
 
   /** Использовал ли пользователь калькулятор */

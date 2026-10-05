@@ -9,8 +9,8 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:status": "prisma migrate status",
-    "db:seed": "ts-node -P tsconfig.seed.json prisma/seed.ts"
-
+    "db:seed": "ts-node -P tsconfig.seed.json prisma/seed.ts",
+    "test": "jest"
   },
   "dependencies": {
     "@nestjs/common": "^10.3.0",
@@ -45,12 +45,23 @@
     "@nestjs/schematics": "^10.1.1",
     "@types/bcrypt": "^5.0.2",
     "@types/express": "^4.17.21",
+    "@types/jest": "^29.5.14",
     "@types/node": "^20.12.2",
     "@types/passport-jwt": "^4.0.1",
     "@types/passport-local": "^1.0.38",
+    "jest": "^29.7.0",
     "prisma": "^5.11.0",
+    "ts-jest": "^29.4.14",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.4.3"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "rootDir": "src",
+    "testRegex": ".*\\.spec\\.ts$",
+    "transform": {
+      "^.+\\.ts$": "ts-jest"
+    }
   }
 }

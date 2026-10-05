@@ -1,5 +1,7 @@
 # AI Real Estate Consultant — Новостройки Уфы
 
+[![CI](https://github.com/Zaynetdinova/estate_ufa/actions/workflows/ci.yml/badge.svg)](https://github.com/Zaynetdinova/estate_ufa/actions/workflows/ci.yml)
+
 Пет-проект AI-консультанта, который помогает подобрать новостройку по бюджету и параметрам квартиры, отвечает на справочные вопросы по базе знаний и передаёт события пользователя в автоматизации.
 
 > **Статус:** учебный прототип для портфолио. Каталог и FAQ содержат демонстрационные данные.
@@ -266,6 +268,16 @@ docker compose up -d --build
 ### Настройка n8n
 
 При пустом экземпляре импортируйте нужные workflow из `infra/n8n-workflows/` через интерфейс n8n. Настройте Telegram Bot credential и Gmail OAuth2 credential в n8n. Значение Telegram Chat ID передаётся в контейнер через `TELEGRAM_CHAT_ID`; личные credentials хранятся в n8n и в Git не включаются.
+
+## Тесты и CI
+
+Unit-тесты API (Jest) покрывают lead scoring, подсчёт просмотренных ЖК, проверку ролей, обязательность `JWT_SECRET` и лимиты запроса к чату:
+
+```bash
+cd apps/api && npm test
+```
+
+GitHub Actions ([ci.yml](.github/workflows/ci.yml)) на каждый PR собирает API и сайт, запускает тесты, применяет миграции к пустой PostgreSQL с pgvector и проверяет, что `schema.prisma` не изменена без новой миграции.
 
 ## Ручная оценка RAG
 
