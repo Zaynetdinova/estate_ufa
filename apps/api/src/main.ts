@@ -41,7 +41,9 @@ async function bootstrap() {
   app.useGlobalInterceptors(new BigIntInterceptor());
 
   // ── Swagger ───────────────────────────────────────────────────────────
-  if (process.env.NODE_ENV !== 'production' || process.env.SWAGGER_ENABLED === 'true') {
+  // На проде (production или Vercel) документация закрыта; включается SWAGGER_ENABLED=true
+  const isProd = process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL);
+  if (!isProd || process.env.SWAGGER_ENABLED === 'true') {
     const config = new DocumentBuilder()
       .setTitle('Estate AI API')
       .setDescription('AI-платформа подбора новостроек Уфы')
