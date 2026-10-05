@@ -1,4 +1,4 @@
-import { IsArray, IsOptional, IsString, IsIn, ValidateNested, MaxLength } from 'class-validator';
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsOptional, IsString, IsIn, ValidateNested, MaxLength } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class ChatMessageDto {
@@ -12,6 +12,8 @@ export class ChatMessageDto {
 
 export class SendMessageDto {
   @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(50) // в модель уходят только последние 10, но тело запроса не должно быть безразмерным
   @ValidateNested({ each: true })
   @Type(() => ChatMessageDto)
   messages: ChatMessageDto[];

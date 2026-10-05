@@ -9,6 +9,7 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { N8nService } from '../n8n/n8n.service';
 import { N8nEventType } from '../n8n/n8n.types';
+import { getJwtSecret } from './jwt-secret';
 import { RegisterDto, LoginDto } from './auth.dto';
 
 @Injectable()
@@ -74,7 +75,7 @@ export class AuthService {
     return this.jwt.sign(
       { sub: userId, email },
       {
-        secret:    this.config.get<string>('JWT_SECRET', 'change-me'),
+        secret:    getJwtSecret(this.config),
         expiresIn: this.config.get<string>('JWT_EXPIRES_IN', '7d'),
       },
     );

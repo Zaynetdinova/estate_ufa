@@ -9,6 +9,9 @@ import { PropertiesService } from '../properties/properties.service';
 import { KnowledgeService } from '../knowledge/knowledge.service';
 import { SendMessageDto } from './chat.dto';
 
+// Потолок длины ответа консультанта (~2500 символов), чтобы ограничить расход токенов
+const MAX_ANSWER_TOKENS = 700;
+
 interface AiProfileExtract {
   budgetMin?: number;
   budgetMax?: number;
@@ -103,6 +106,7 @@ export class ChatService {
       const stream = await this.openai.chat.completions.create({
         model: 'gpt-4o-mini',
         stream: true,
+        max_tokens: MAX_ANSWER_TOKENS,
         messages: [
           { role: 'system', content: this.buildKnowledgeSystemPrompt(passages) },
           ...dto.messages.slice(-10),
@@ -136,6 +140,7 @@ export class ChatService {
       const stream = await this.openai.chat.completions.create({
         model: 'gpt-4o-mini',
         stream: true,
+        max_tokens: MAX_ANSWER_TOKENS,
         messages: [
           { role: 'system', content: this.buildSearchSystemPrompt(candidates, searchRequest) },
           ...dto.messages.slice(-10),
@@ -151,6 +156,7 @@ export class ChatService {
     const stream = await this.openai.chat.completions.create({
       model:  'gpt-4o-mini',
       stream: true,
+      max_tokens: MAX_ANSWER_TOKENS,
       messages: [
         { role: 'system', content: this.buildSystemPrompt(propertiesContext) },
         ...dto.messages.slice(-10), // последние 10 сообщений
