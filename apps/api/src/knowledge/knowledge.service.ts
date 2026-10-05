@@ -37,9 +37,9 @@ export class KnowledgeService implements OnModuleInit {
     this.openai = new OpenAI({ apiKey: config.get<string>('OPENAI_API_KEY', '') });
   }
 
+  // Таблица rag_chunks и расширение vector создаются миграцией prisma/migrations/0_init
   async onModuleInit(): Promise<void> {
     try {
-      await this.ensureVectorStore();
       await this.indexKnowledgeBase();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -66,25 +66,6 @@ export class KnowledgeService implements OnModuleInit {
       WHERE 1 - (embedding <=> ${vector}::vector) >= ${MIN_SIMILARITY}
       ORDER BY embedding <=> ${vector}::vector
       LIMIT ${limit}
-    `);
-  }
-
-  private async ensureVectorStore(): Promise<void> {
-    // The vector type is intentionally managed with SQL: Prisma 5 does not
-    // expose pgvector values as regular generated fields.
-    await this.prisma.$executeRawUnsafe('CREATE EXTENSION IF NOT EXISTS vector');
-    await this.prisma.$executeRawUnsafe(`
-      CREATE TABLE IF NOT EXISTS rag_chunks (
-        id BIGSERIAL PRIMARY KEY,
-        source TEXT NOT NULL,
-        title TEXT NOT NULL,
-        chunk_index INTEGER NOT NULL,
-        content TEXT NOT NULL,
-        document_hash CHAR(64) NOT NULL,
-        embedding vector(1536) NOT NULL,
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        UNIQUE (source, chunk_index)
-      )
     `);
   }
 
