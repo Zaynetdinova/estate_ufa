@@ -32,6 +32,7 @@ Redis и n8n в онлайн-версии не развёрнуты: API раб�
 | `OPENAI_API_KEY` | да | Для AI-чата, RAG и рекомендаций |
 | `NODE_ENV` | — | `production` |
 | `REDIS_URL`, `N8N_WEBHOOK_URL` | нет | Без них API работает без кэша и автоматизаций |
+| `SWAGGER_ENABLED` | нет | `true` — открыть `/api/docs` на проде |
 
 **Сайт** (`apps/web`). Значения `NEXT_PUBLIC_*` попадают в клиентский bundle, секреты туда добавлять нельзя.
 
@@ -74,7 +75,7 @@ UPDATE users SET role = 'admin' WHERE email = 'you@example.com';
 - Ответы на FAQ с указанием источников.
 - Создание лида и детерминированная оценка готовности клиента.
 - Автоматизации n8n для рекомендаций, событий, Telegram-уведомлений и email-цепочки.
-- Swagger-документация REST API.
+- Swagger-документация REST API (локально; на проде включается `SWAGGER_ENABLED=true`).
 
 ## Архитектура
 
@@ -213,7 +214,7 @@ xychart-beta
 | `GET` | `/recommendations` | Подборка ЖК; для авторизованного пользователя используется n8n/GPT |
 | `POST` | `/events/track` | Запись события пользователя и передача его в n8n |
 | `POST` | `/leads` | Создание лида и расчёт score |
-| `GET` | `/api/docs` | Swagger UI |
+| `GET` | `/api/docs` | Swagger UI (только локально или при `SWAGGER_ENABLED=true`) |
 
 ## Запуск локально
 
