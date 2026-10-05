@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useTrackEvent } from '@/lib/hooks/useTrackEvent';
 
@@ -81,8 +81,34 @@ export function CalculatorClient() {
 
   const result = useMemo(() => calcInvestment(params), [params]);
 
+  // CALCULATOR_USED (+2 к скорингу лида): один раз за визит, когда пользователь
+  // сам поменял параметры. Ждём паузу, чтобы отправить итоговые значения, а не каждую цифру.
+  const touched = useRef(false);
+  const tracked = useRef(false);
+
+  useEffect(() => {
+    if (!touched.current || tracked.current) return;
+    const timer = setTimeout(() => {
+      tracked.current = true;
+      track('CALCULATOR_USED', {
+        price:        params.price,
+        area:         params.area,
+        monthlyRent:  params.monthlyRent,
+        taxMode:      params.taxMode,
+        yieldPct:     result.yieldPct,
+        paybackYears: Number.isFinite(result.paybackYears) ? result.paybackYears : null,
+      });
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [params, result, track]);
+
+  const update = (patch: Partial<CalcParams>) => {
+    touched.current = true;
+    setParams((prev) => ({ ...prev, ...patch }));
+  };
+
   const set = (field: keyof CalcParams) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    setParams((prev) => ({ ...prev, [field]: Number(e.target.value) }));
+    update({ [field]: Number(e.target.value) });
   };
 
   const verdictConfig = {
@@ -143,10 +169,10 @@ export function CalculatorClient() {
           <div>
             <label style={lbl}>Налоговый режим</label>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button style={radioBtn(params.taxMode === 'ndfl')} onClick={() => setParams((p) => ({ ...p, taxMode: 'ndfl' }))}>
+              <button style={radioBtn(params.taxMode === 'ndfl')} onClick={() => update({ taxMode: 'ndfl' })}>
                 13% НДФЛ
               </button>
-              <button style={radioBtn(params.taxMode === 'self')} onClick={() => setParams((p) => ({ ...p, taxMode: 'self' }))}>
+              <button style={radioBtn(params.taxMode === 'self')} onClick={() => update({ taxMode: 'self' })}>
                 4% самозанятый
               </button>
             </div>
