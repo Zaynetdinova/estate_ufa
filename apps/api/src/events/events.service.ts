@@ -34,6 +34,14 @@ export class EventsService {
       },
     });
 
+    // Счётчик просмотров ЖК (сортировка «популярные») растёт по событию со страницы ЖК
+    if (dto.eventType === N8nEventType.VIEW_PROPERTY && dto.propertyId) {
+      await this.prisma.property.updateMany({
+        where: { id: dto.propertyId },
+        data:  { viewsCount: { increment: 1 } },
+      });
+    }
+
     // 2. Fire-and-forget в n8n
     await this.n8n.sendEvent(
       dto.eventType as N8nEventType,

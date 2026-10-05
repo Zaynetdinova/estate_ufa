@@ -1,7 +1,6 @@
-import { Controller, Get, Param, Query, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { PropertiesService } from './properties.service';
 import { PropertyFiltersDto } from './properties.dto';
-import { OptionalJwtGuard } from '../common/guards/optional-jwt.guard';
 
 @Controller('properties')
 export class PropertiesController {
@@ -27,14 +26,10 @@ export class PropertiesController {
 
   /**
    * GET /properties/:slug
-   * Страница ЖК. Записывает VIEW_PROPERTY событие.
+   * Карточка ЖК. Без побочных эффектов, поэтому ответ можно кешировать на стороне сайта.
    */
-  @UseGuards(OptionalJwtGuard)
   @Get(':slug')
-  findBySlug(@Param('slug') slug: string, @Req() req: any) {
-    return this.propertiesService.findBySlug(slug, {
-      userId:    req.user?.id,
-      sessionId: req.headers['x-session-id'],
-    });
+  findBySlug(@Param('slug') slug: string) {
+    return this.propertiesService.findBySlug(slug);
   }
 }

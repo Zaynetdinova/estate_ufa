@@ -1,8 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { EventsService } from '../events/events.service';
 import { CacheService } from '../cache/cache.service';
-import { N8nEventType } from '../n8n/n8n.types';
 import { PropertyFiltersDto } from './properties.dto';
 import { Prisma } from '@prisma/client';
 
@@ -15,7 +13,6 @@ const TTL_AI     = 600; // 10 мин — контекст для AI
 export class PropertiesService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly events: EventsService,
     private readonly cache: CacheService,
   ) {}
 
@@ -69,7 +66,8 @@ export class PropertiesService {
     return result;
   }
 
-  async findBySlug(slug: string, meta?: { userId?: number; sessionId?: string }) {
+  /** Только чтение: просмотр засчитывается по событию VIEW_PROPERTY со страницы ЖК. */
+  async findBySlug(slug: string) {
     const cacheKey = `properties:slug:${slug}`;
     let property   = await this.cache.get<any>(cacheKey);
 
@@ -86,28 +84,6 @@ export class PropertiesService {
     }
 
     if (!property) throw new NotFoundException(`Property "${slug}" not found`);
-
-    // Инкрементируем счётчик просмотров
-    await this.prisma.property.update({
-      where: { id: property.id },
-      data:  { viewsCount: { increment: 1 } },
-    });
-
-    // Трекаем событие VIEW_PROPERTY
-    await this.events.track(
-      {
-        eventType:  N8nEventType.VIEW_PROPERTY,
-        propertyId: property.id,
-        payload: {
-          propertyId:   property.id,
-          propertyName: property.name,
-          propertySlug: property.slug,
-          district:     property.district,
-          priceFrom:    Number(property.priceFrom),
-        },
-      },
-      meta,
-    );
 
     return property;
   }

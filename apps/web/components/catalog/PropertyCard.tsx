@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { useEffect } from 'react';
-import { useTrackEvent } from '@/lib/hooks/useTrackEvent';
 import { useFavoritesStore } from '@/lib/store/favorites.store';
 import type { Property } from '@/lib/api';
 
@@ -33,7 +32,6 @@ function fmtMillions(n: number) {
 }
 
 export function PropertyCard({ property }: Props) {
-  const track   = useTrackEvent();
   const { has, toggle, load, isLoaded } = useFavoritesStore();
   const isFav   = has(property.id);
 
@@ -43,16 +41,6 @@ export function PropertyCard({ property }: Props) {
     e.preventDefault();
     e.stopPropagation();
     toggle(property.id);
-  };
-
-  const handleClick = () => {
-    track('VIEW_PROPERTY', {
-      propertyId:   property.id,
-      propertyName: property.name,
-      propertySlug: property.slug,
-      district:     property.district,
-      priceFrom:    property.priceFrom,
-    }, property.id);
   };
 
   const image    = property.images[0]?.url;
@@ -82,7 +70,6 @@ export function PropertyCard({ property }: Props) {
   return (
     <Link
       href={`/catalog/${property.slug}`}
-      onClick={handleClick}
       style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
     >
       <article
