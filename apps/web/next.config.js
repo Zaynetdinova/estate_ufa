@@ -3,11 +3,10 @@ const nextConfig = {
   // Docker uses the standalone server; Vercel manages its own Next.js runtime.
   output: process.env.VERCEL ? undefined : 'standalone',
   outputFileTracingRoot: __dirname,
+  // next/image в проекте не используется; отключаем оптимизатор, иначе /_next/image
+  // работает как открытый прокси для картинок с любого домена за счёт квоты Vercel
   images: {
-    remotePatterns: [
-      { protocol: 'https', hostname: '**' },
-      { protocol: 'http',  hostname: 'localhost' },
-    ],
+    unoptimized: true,
   },
   async headers() {
     return [
