@@ -27,6 +27,7 @@ async function bootstrap() {
     origin:      (process.env.FRONTEND_URL ?? 'http://localhost:3000').split(',').map((url) => url.trim()),
     credentials: true,
     methods:     ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    exposedHeaders: ['X-Chat-Intent'], // чат читает тип запроса из заголовка ответа
   });
 
   // ── Validation ────────────────────────────────────────────────────────

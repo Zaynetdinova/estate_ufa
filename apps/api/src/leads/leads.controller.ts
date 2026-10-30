@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { LeadsService } from './leads.service';
-import { CreateLeadDto, UpdateLeadStatusDto } from './leads.dto';
+import { CreateLeadDto, UpdateLeadNotesDto, UpdateLeadStatusDto } from './leads.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { OptionalJwtGuard } from '../common/guards/optional-jwt.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -45,6 +45,31 @@ export class LeadsController {
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.leadsService.findOne(id);
+  }
+
+  /**
+   * GET /leads/:id/chat
+   * Переписка клиента с AI-консультантом (по сессии чата, из которой оставлена заявка)
+   */
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('manager', 'admin')
+  @Get(':id/chat')
+  findChat(@Param('id', ParseIntPipe) id: number) {
+    return this.leadsService.findChat(id);
+  }
+
+  /**
+   * PATCH /leads/:id/notes
+   * Заметки менеджера (итог звонка и т.п.)
+   */
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('manager', 'admin')
+  @Patch(':id/notes')
+  updateNotes(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateLeadNotesDto,
+  ) {
+    return this.leadsService.updateNotes(id, dto);
   }
 
   /**

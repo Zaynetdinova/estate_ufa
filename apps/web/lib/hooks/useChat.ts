@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { streamChatMessage, chatApi, type ChatMessage } from '../api';
+import { streamChatMessage, chatApi, type ChatIntent, type ChatMessage } from '../api';
 import { useAuthStore } from '../store/auth.store';
 import { useTrackEvent } from './useTrackEvent';
 
@@ -9,6 +9,8 @@ export interface UseChatReturn {
   messages:   ChatMessage[];
   isLoading:  boolean;
   error:      string | null;
+  /** Тип последнего запроса: после подбора квартир выделяем кнопку менеджера */
+  lastIntent: ChatIntent | null;
   sendMessage: (text: string) => Promise<void>;
   clearError:  () => void;
 }
@@ -21,6 +23,7 @@ export function useChat(): UseChatReturn {
   const [messages,  setMessages]  = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error,     setError]     = useState<string | null>(null);
+  const [lastIntent, setLastIntent] = useState<ChatIntent | null>(null);
 
   const abortRef  = useRef<AbortController | null>(null);
   const sessionId = useAuthStore((s) => s.sessionId);
@@ -60,6 +63,7 @@ export function useChat(): UseChatReturn {
     setMessages(nextMessages);
     setIsLoading(true);
     setError(null);
+    setLastIntent(null);
 
     // Трекаем событие
     track('USER_MESSAGE', { message: text, sessionId });
@@ -72,7 +76,7 @@ export function useChat(): UseChatReturn {
     abortRef.current = new AbortController();
 
     try {
-      await streamChatMessage(
+      const intent = await streamChatMessage(
         nextMessages.slice(-MAX_SENT_MESSAGES),
         sessionId,
         (chunk) => {
@@ -87,6 +91,7 @@ export function useChat(): UseChatReturn {
         },
         abortRef.current.signal,
       );
+      setLastIntent(intent);
     } catch (err: unknown) {
       if (err instanceof Error && err.name === 'AbortError') return;
       setError('Ошибка соединения. Попробуй ещё раз.');
@@ -103,6 +108,7 @@ export function useChat(): UseChatReturn {
     messages,
     isLoading,
     error,
+    lastIntent,
     sendMessage,
     clearError: () => setError(null),
   };

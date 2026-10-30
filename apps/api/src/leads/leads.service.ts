@@ -4,7 +4,8 @@ import { N8nService } from '../n8n/n8n.service';
 import { N8nEventType, NewLeadPayload } from '../n8n/n8n.types';
 import { ScoringService } from './scoring.service';
 import { LeadClassifierService, isHotLead } from './lead-classifier.service';
-import { CreateLeadDto, UpdateLeadStatusDto } from './leads.dto';
+import { CreateLeadDto, UpdateLeadNotesDto, UpdateLeadStatusDto } from './leads.dto';
+import { TelegramService } from '../telegram/telegram.service';
 import { Prisma } from '@prisma/client';
 
 @Injectable()
@@ -14,6 +15,7 @@ export class LeadsService {
     private readonly n8n: N8nService,
     private readonly scoring: ScoringService,
     private readonly classifier: LeadClassifierService,
+    private readonly telegram: TelegramService,
   ) {}
 
   async create(dto: CreateLeadDto, userId?: number) {
@@ -69,6 +71,7 @@ export class LeadsService {
     const classification = dto.message ? await this.classifier.classify(dto.message) : null;
     const contactName = dto.contactName || user?.name || classification?.name || null;
     const contactPhone = dto.contactPhone || user?.phone || null;
+    const sessionId = dto.sessionId || null;
 
     // 4. Создаём лид
     const lead = await this.prisma.lead.create({
@@ -78,6 +81,7 @@ export class LeadsService {
         status:  'new',
         score,
         notes:   dto.notes ?? null,
+        sessionId,
         contactName,
         contactPhone,
         message:   dto.message ?? null,
@@ -109,10 +113,18 @@ export class LeadsService {
       urgency:   lead.urgency ?? undefined,
       summary:   lead.aiSummary ?? undefined,
       intent:    user?.intent ?? undefined,
+      notes:     lead.notes ?? undefined,
       snapshot:  snapshot ?? undefined,
     };
 
     await this.n8n.sendEvent<NewLeadPayload>(N8nEventType.NEW_LEAD, payload, { userId });
+
+    // 6. Уведомляем менеджеров в Telegram напрямую — работает и без n8n.
+    // Ждём отправку: на Vercel функция замораживается сразу после ответа.
+    const hasChat = sessionId
+      ? (await this.prisma.chatMessage.count({ where: { sessionId } })) > 0
+      : false;
+    await this.telegram.notifyNewLead({ ...payload, hasChat });
 
     return lead;
   }
@@ -131,6 +143,26 @@ export class LeadsService {
     });
     if (!lead) throw new NotFoundException(`Lead #${id} not found`);
     return lead;
+  }
+
+  /** Переписка клиента с AI-консультантом в той сессии, из которой оставлена заявка */
+  async findChat(id: number) {
+    const lead = await this.findOne(id);
+    if (!lead.sessionId) return [];
+    return this.prisma.chatMessage.findMany({
+      where:   { sessionId: lead.sessionId },
+      select:  { id: true, role: true, content: true, createdAt: true },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      take:    200,
+    });
+  }
+
+  async updateNotes(id: number, dto: UpdateLeadNotesDto) {
+    await this.findOne(id); // throws if not found
+    return this.prisma.lead.update({
+      where: { id },
+      data:  { managerNotes: dto.managerNotes.trim() || null },
+    });
   }
 
   async updateStatus(id: number, dto: UpdateLeadStatusDto) {

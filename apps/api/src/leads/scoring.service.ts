@@ -8,7 +8,7 @@ import { EventsService } from '../events/events.service';
  * +2   — использовал калькулятор
  * +3   — просмотрел >3 ЖК
  * +5   — написал "хочу купить" / "куплю" / "покупку"
- * +10  — нажал "Получить подборку" (REQUEST_SELECTION)
+ * +10  — оставил заявку «Подобрать с менеджером» (REQUEST_SELECTION)
  * Итого max: 20
  */
 @Injectable()
@@ -35,7 +35,7 @@ export class ScoringService {
     const hasBuyIntent = await this.checkBuyIntent(userId);
     if (hasBuyIntent) score += 5;
 
-    // +10: нажимал "Получить подборку"
+    // +10: оставлял заявку «Подобрать с менеджером»
     const requestedSelection = await this.prisma.userEvent.count({
       where: { userId, eventType: 'REQUEST_SELECTION' },
     });

@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useTrackEvent } from '@/lib/hooks/useTrackEvent';
+import { RequestSelectionButton } from '@/components/leads/RequestSelectionButton';
 
 interface CalcParams {
   price:           number;
@@ -119,6 +120,12 @@ export function CalculatorClient() {
   };
 
   const netK = Math.round(result.netIncome / 1000);
+
+  // Параметры расчёта уходят менеджеру вместе с заявкой
+  const leadContext =
+    `Калькулятор: квартира ${params.price.toLocaleString('ru')} ₽, ${params.area} м², ` +
+    `аренда ${params.monthlyRent.toLocaleString('ru')} ₽/мес, доходность ${result.yieldPct}%, ` +
+    `окупаемость ${Number.isFinite(result.paybackYears) ? `${result.paybackYears} лет` : 'не окупается'}`;
 
   return (
     <>
@@ -243,6 +250,8 @@ export function CalculatorClient() {
           </div>
         </div>
       </div>
+
+      <RequestSelectionButton source="calculator" variant="banner" context={leadContext} />
     </>
   );
 }

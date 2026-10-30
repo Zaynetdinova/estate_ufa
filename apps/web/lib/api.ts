@@ -72,6 +72,10 @@ export interface CreateLeadInput {
   contactName?: string;
   contactPhone?: string;
   message?: string;
+  /** Сессия чата — менеджер увидит переписку с AI-консультантом */
+  sessionId?: string;
+  /** Согласие на обработку персональных данных */
+  consent: true;
 }
 
 export interface ChatMessage {
@@ -223,12 +227,15 @@ export const chatApi = {
 
 // ── Chat (streaming) ─────────────────────────────────────────
 
+export type ChatIntent = 'property_search' | 'knowledge_question' | 'general_question';
+
+/** Стримит ответ консультанта; возвращает тип запроса (после подбора квартир предлагаем менеджера). */
 export async function streamChatMessage(
   messages: ChatMessage[],
   sessionId: string,
   onChunk: (text: string) => void,
   signal?: AbortSignal,
-): Promise<void> {
+): Promise<ChatIntent | null> {
   const token = localStorage.getItem('accessToken');
 
   const res = await fetch(`${BASE_URL}/chat/message`, {
@@ -243,6 +250,7 @@ export async function streamChatMessage(
 
   if (!res.ok || !res.body) throw new Error('Chat stream failed');
 
+  const intent  = res.headers.get('X-Chat-Intent') as ChatIntent | null;
   const reader  = res.body.getReader();
   const decoder = new TextDecoder();
 
@@ -251,6 +259,8 @@ export async function streamChatMessage(
     if (done) break;
     onChunk(decoder.decode(value, { stream: true }));
   }
+
+  return intent;
 }
 
 // ── Users ────────────────────────────────────────────────────

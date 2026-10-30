@@ -17,6 +17,8 @@ interface Lead {
   classification: { name?: string | null; budget?: number | null; rooms?: number | null } | null;
   createdAt: string;
   snapshot:  Record<string, unknown> | null;
+  sessionId:    string | null;
+  managerNotes: string | null;
   user: {
     id:    number;
     email: string;
@@ -35,7 +37,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }
 
 const SOURCE_LABEL: Record<string, string> = {
   chat:       '💬 Чат',
-  manual:     '👆 Кнопка',
+  manual:     '🏠 Страница ЖК',
   calculator: '🧮 Калькулятор',
 };
 
@@ -66,6 +68,25 @@ function CategoryBadge({ category }: { category: string | null }) {
   );
 }
 
+interface ChatLine {
+  id:        number;
+  role:      'user' | 'assistant';
+  content:   string;
+  createdAt: string;
+}
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
+async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const token = localStorage.getItem('accessToken');
+  const res = await fetch(`${API_URL}${path}`, {
+    ...init,
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...init.headers },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<T>;
+}
+
 function ScoreBar({ score }: { score: number }) {
   const max   = 20;
   const pct   = Math.min((score / max) * 100, 100);
@@ -89,6 +110,7 @@ export function LeadsDashboard() {
   const [updating,      setUpdating]      = useState<number | null>(null);
   const [selected,      setSelected]      = useState<Lead | null>(null);
   const [denied,        setDenied]        = useState(false);
+  const [actionError,   setActionError]   = useState<string | null>(null);
 
   const fetchLeads = useCallback(async () => {
     const token = localStorage.getItem('accessToken');
@@ -106,7 +128,11 @@ export function LeadsDashboard() {
         return;
       }
       const data = await res.json();
-      setLeads(Array.isArray(data) ? data : []);
+      const list: Lead[] = Array.isArray(data) ? data : [];
+      setLeads(list);
+      // Ссылка из Telegram ведёт на /admin/leads?id=N — сразу открываем карточку лида
+      const id = Number(new URLSearchParams(window.location.search).get('id'));
+      if (id) setSelected(list.find((l) => l.id === id) ?? null);
     } finally {
       setLoading(false);
     }
@@ -114,20 +140,33 @@ export function LeadsDashboard() {
 
   useEffect(() => { fetchLeads(); }, [fetchLeads]);
 
+  const patchLead = (leadId: number, patch: Partial<Lead>) => {
+    setLeads((prev) => prev.map((l) => l.id === leadId ? { ...l, ...patch } : l));
+    setSelected((s) => s?.id === leadId ? { ...s, ...patch } : s);
+  };
+
   const updateStatus = async (leadId: number, status: string) => {
-    const token = localStorage.getItem('accessToken');
-    if (!token) return;
     setUpdating(leadId);
+    setActionError(null);
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/leads/${leadId}/status`, {
-        method:  'PATCH',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ status }),
-      });
-      setLeads((prev) => prev.map((l) => l.id === leadId ? { ...l, status } : l));
-      if (selected?.id === leadId) setSelected((s) => s ? { ...s, status } : s);
+      await apiRequest(`/leads/${leadId}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
+      patchLead(leadId, { status });
+    } catch {
+      setActionError(`Не удалось изменить статус лида #${leadId}. Попробуйте ещё раз.`);
     } finally {
       setUpdating(null);
+    }
+  };
+
+  const saveNotes = async (leadId: number, managerNotes: string) => {
+    setActionError(null);
+    try {
+      const updated = await apiRequest<Lead>(`/leads/${leadId}/notes`, { method: 'PATCH', body: JSON.stringify({ managerNotes }) });
+      patchLead(leadId, { managerNotes: updated.managerNotes });
+      return true;
+    } catch {
+      setActionError(`Не удалось сохранить заметку к лиду #${leadId}. Попробуйте ещё раз.`);
+      return false;
     }
   };
 
@@ -205,6 +244,16 @@ export function LeadsDashboard() {
           Скрыть спам ({stats.spam})
         </label>
       </div>
+
+      {actionError && (
+        <div
+          role="alert"
+          style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', padding: '0.75rem 1rem', marginBottom: '1rem', borderRadius: 10, background: 'rgba(235,87,87,0.1)', color: '#EB5757', fontSize: '0.875rem' }}
+        >
+          <span style={{ flex: 1 }}>{actionError}</span>
+          <button onClick={() => setActionError(null)} style={{ background: 'none', border: 'none', color: '#EB5757', cursor: 'pointer', fontWeight: 700 }}>×</button>
+        </div>
+      )}
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: '3rem', color: 'rgba(15,25,35,0.4)' }}>Загрузка…</div>
@@ -333,6 +382,8 @@ export function LeadsDashboard() {
                 padding:      '1.25rem',
                 position:     'sticky',
                 top:          80,
+                maxHeight:    'calc(100vh - 100px)',
+                overflowY:    'auto',
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
@@ -358,7 +409,7 @@ export function LeadsDashboard() {
                 ))}
 
                 {selected.notes && (
-                  <div style={{ fontSize: '0.8125rem', color: 'rgba(15,25,35,0.6)' }}>{selected.notes}</div>
+                  <div style={{ fontSize: '0.8125rem', color: 'rgba(15,25,35,0.6)' }}>📍 {selected.notes}</div>
                 )}
 
                 {selected.message && (
@@ -455,8 +506,103 @@ export function LeadsDashboard() {
                   ))}
                 </div>
               </div>
+
+              <ManagerNotes key={`notes-${selected.id}`} lead={selected} onSave={saveNotes} />
+              <ChatTranscript key={`chat-${selected.id}`} lead={selected} />
             </div>
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const sectionTitle: React.CSSProperties = { fontSize: '0.75rem', color: 'rgba(15,25,35,0.45)', marginBottom: 6 };
+
+function ManagerNotes({ lead, onSave }: { lead: Lead; onSave: (leadId: number, notes: string) => Promise<boolean> }) {
+  const [value,  setValue]  = useState(lead.managerNotes ?? '');
+  const [saving, setSaving] = useState(false);
+  const [saved,  setSaved]  = useState(false);
+  const dirty = value !== (lead.managerNotes ?? '');
+
+  const save = async () => {
+    setSaving(true);
+    setSaved(await onSave(lead.id, value));
+    setSaving(false);
+  };
+
+  return (
+    <div style={{ marginTop: '1.25rem' }}>
+      <div style={sectionTitle}>Заметки менеджера</div>
+      <textarea
+        value={value}
+        onChange={(e) => { setValue(e.target.value); setSaved(false); }}
+        placeholder="Итог звонка, договорённости, следующий шаг"
+        maxLength={5000}
+        rows={4}
+        style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem 0.625rem', borderRadius: 8, border: '1.5px solid rgba(15,25,35,0.12)', fontFamily: 'Manrope, sans-serif', fontSize: '0.8125rem', resize: 'vertical' }}
+      />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+        <button
+          onClick={save}
+          disabled={!dirty || saving}
+          style={{ padding: '0.4rem 0.875rem', borderRadius: 8, border: 'none', background: dirty ? '#2F80ED' : '#E2E8F0', color: dirty ? '#fff' : 'rgba(15,25,35,0.4)', fontFamily: 'Manrope, sans-serif', fontWeight: 600, fontSize: '0.78rem', cursor: dirty && !saving ? 'pointer' : 'default' }}
+        >
+          {saving ? 'Сохраняем…' : 'Сохранить'}
+        </button>
+        {saved && !dirty && <span style={{ fontSize: '0.75rem', color: '#27AE60' }}>Сохранено</span>}
+      </div>
+    </div>
+  );
+}
+
+function ChatTranscript({ lead }: { lead: Lead }) {
+  const [lines,   setLines]   = useState<ChatLine[] | null>(null);
+  const [failed,  setFailed]  = useState(false);
+
+  useEffect(() => {
+    if (!lead.sessionId) return;
+    apiRequest<ChatLine[]>(`/leads/${lead.id}/chat`)
+      .then(setLines)
+      .catch(() => setFailed(true));
+  }, [lead.id, lead.sessionId]);
+
+  const muted: React.CSSProperties = { fontSize: '0.8125rem', color: 'rgba(15,25,35,0.45)' };
+
+  return (
+    <div style={{ marginTop: '1.25rem' }}>
+      <div style={sectionTitle}>Переписка с AI-консультантом</div>
+      {!lead.sessionId ? (
+        <div style={muted}>Заявка оставлена без привязки к чату</div>
+      ) : failed ? (
+        <div style={{ ...muted, color: '#EB5757' }}>Не удалось загрузить переписку</div>
+      ) : lines === null ? (
+        <div style={muted}>Загрузка…</div>
+      ) : lines.length === 0 ? (
+        <div style={muted}>Клиент не писал в чат</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 360, overflowY: 'auto', padding: 2 }}>
+          {lines.map((line) => (
+            <div
+              key={line.id}
+              style={{
+                alignSelf:    line.role === 'user' ? 'flex-end' : 'flex-start',
+                maxWidth:     '90%',
+                padding:      '0.4rem 0.625rem',
+                borderRadius: 10,
+                background:   line.role === 'user' ? '#EBF4FF' : '#F7F9FC',
+                fontSize:     '0.78rem',
+                lineHeight:   1.45,
+                whiteSpace:   'pre-wrap',
+                wordBreak:    'break-word',
+              }}
+            >
+              <div style={{ fontSize: '0.68rem', color: 'rgba(15,25,35,0.4)', marginBottom: 2 }}>
+                {line.role === 'user' ? 'Клиент' : 'AI'} · {new Date(line.createdAt).toLocaleString('ru', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+              </div>
+              {line.content}
+            </div>
+          ))}
         </div>
       )}
     </div>

@@ -57,6 +57,8 @@ export interface NewLeadPayload {
   budgetMin?: number;
   budgetMax?: number;
   intent?: string;
+  /** Контекст от сайта: название ЖК или параметры расчёта калькулятора */
+  notes?: string;
   message?: string;
   category?: string;
   urgency?: string;

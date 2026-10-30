@@ -23,12 +23,14 @@ export class ChatController {
   ) {
     const userId: number | undefined = req.user?.id;
 
+    const { stream, intent } = await this.chatService.streamResponse(dto, userId);
+    const reader  = stream.getReader();
+
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
     res.setHeader('Transfer-Encoding', 'chunked');
     res.setHeader('Cache-Control', 'no-cache');
-
-    const stream = await this.chatService.streamResponse(dto, userId);
-    const reader  = stream.getReader();
+    // Тип запроса: после подбора квартир сайт выделяет кнопку «Подобрать с менеджером»
+    res.setHeader('X-Chat-Intent', intent);
 
     try {
       while (true) {
