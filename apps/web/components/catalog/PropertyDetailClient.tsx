@@ -163,7 +163,7 @@ export function PropertyDetailClient({ property }: Props) {
               ))}
             </div>
 
-            <RequestSelectionButton source="manual" />
+            <RequestSelectionButton source="manual" context={property.name} />
 
             <Link
               href="/chat"

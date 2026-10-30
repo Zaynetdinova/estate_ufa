@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { LeadsService } from './leads.service';
 import { CreateLeadDto, UpdateLeadStatusDto } from './leads.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -14,8 +15,10 @@ export class LeadsController {
    * POST /leads
    * Создать лид. Авторизация опциональна:
    * - авторизованный → лид привязывается к пользователю + берётся его скор
-   * - анонимный      → лид без userId, score = 0
+   * - анонимный      → лид без userId, score = 0, телефон обязателен
+   * Не больше 5 заявок в минуту с одного IP: каждая заявка — вызов модели.
    */
+  @Throttle({ global: { limit: 5, ttl: 60_000 } })
   @UseGuards(OptionalJwtGuard)
   @Post()
   create(@Body() dto: CreateLeadDto, @Req() req: any) {

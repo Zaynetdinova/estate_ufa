@@ -61,7 +61,17 @@ export interface Lead {
   source: string;
   status: string;
   score: number;
+  category: 'buy' | 'rent_out' | 'consult' | 'spam' | null;
+  urgency: 'low' | 'medium' | 'high' | null;
   createdAt: string;
+}
+
+export interface CreateLeadInput {
+  source: 'chat' | 'manual' | 'calculator';
+  notes?: string;
+  contactName?: string;
+  contactPhone?: string;
+  message?: string;
 }
 
 export interface ChatMessage {
@@ -180,7 +190,7 @@ export const eventsApi = {
 // ── Leads ────────────────────────────────────────────────────
 
 export const leadsApi = {
-  create: (data: { source: 'chat' | 'manual' | 'calculator'; notes?: string }) =>
+  create: (data: CreateLeadInput) =>
     apiFetch<Lead>('/leads', {
       method: 'POST',
       body: JSON.stringify(data),

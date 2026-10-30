@@ -49,11 +49,17 @@ export interface NewLeadPayload {
   leadId: number;
   source: string;
   score: number;
+  /** score ≥ 10 или срочная заявка (urgency = high), но не спам */
+  isHot: boolean;
   userEmail?: string;
   userName?: string;
   userPhone?: string;
   budgetMin?: number;
   budgetMax?: number;
   intent?: string;
+  message?: string;
+  category?: string;
+  urgency?: string;
+  summary?: string;
   snapshot?: Record<string, unknown>;
 }
