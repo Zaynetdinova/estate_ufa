@@ -8,6 +8,13 @@ interface Lead {
   status:    string;
   score:     number;
   notes:     string | null;
+  contactName:  string | null;
+  contactPhone: string | null;
+  message:      string | null;
+  category:     string | null;
+  urgency:      string | null;
+  aiSummary:    string | null;
+  classification: { name?: string | null; budget?: number | null; rooms?: number | null } | null;
   createdAt: string;
   snapshot:  Record<string, unknown> | null;
   user: {
@@ -32,6 +39,33 @@ const SOURCE_LABEL: Record<string, string> = {
   calculator: '🧮 Калькулятор',
 };
 
+const CATEGORY_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  buy:      { label: 'Покупка',      color: '#27AE60', bg: '#E8F8EE' },
+  rent_out: { label: 'Сдать',        color: '#2F80ED', bg: '#EBF4FF' },
+  consult:  { label: 'Консультация', color: '#9B59B6', bg: '#F5EEFB' },
+  spam:     { label: 'Спам',         color: '#828282', bg: '#F2F2F2' },
+};
+
+const URGENCY_LABEL: Record<string, string> = {
+  high:   '🔥 Срочно',
+  medium: '⏳ Есть срок',
+  low:    'Без спешки',
+};
+
+// То же правило, что isHotLead в API: высокий score или срочная заявка, но не спам
+const isHot = (lead: Lead) =>
+  lead.category !== 'spam' && (lead.score >= 10 || lead.urgency === 'high');
+
+function CategoryBadge({ category }: { category: string | null }) {
+  const cfg = category ? CATEGORY_CONFIG[category] : undefined;
+  if (!cfg) return <span style={{ fontSize: '0.75rem', color: 'rgba(15,25,35,0.35)' }}>—</span>;
+  return (
+    <span style={{ padding: '3px 8px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700, color: cfg.color, background: cfg.bg, whiteSpace: 'nowrap' }}>
+      {cfg.label}
+    </span>
+  );
+}
+
 function ScoreBar({ score }: { score: number }) {
   const max   = 20;
   const pct   = Math.min((score / max) * 100, 100);
@@ -51,6 +85,7 @@ export function LeadsDashboard() {
   const [leads,         setLeads]         = useState<Lead[]>([]);
   const [loading,       setLoading]       = useState(true);
   const [filterStatus,  setFilterStatus]  = useState<string>('all');
+  const [hideSpam,      setHideSpam]      = useState(true);
   const [updating,      setUpdating]      = useState<number | null>(null);
   const [selected,      setSelected]      = useState<Lead | null>(null);
   const [denied,        setDenied]        = useState(false);
@@ -96,15 +131,16 @@ export function LeadsDashboard() {
     }
   };
 
-  const filtered = filterStatus === 'all'
-    ? leads
-    : leads.filter((l) => l.status === filterStatus);
+  const filtered = leads
+    .filter((l) => filterStatus === 'all' || l.status === filterStatus)
+    .filter((l) => !hideSpam || l.category !== 'spam');
 
   // Статистика
   const stats = {
     total:   leads.length,
     new:     leads.filter((l) => l.status === 'new').length,
-    hot:     leads.filter((l) => l.score >= 10).length,
+    hot:     leads.filter(isHot).length,
+    spam:    leads.filter((l) => l.category === 'spam').length,
     avgScore: leads.length ? Math.round(leads.reduce((s, l) => s + l.score, 0) / leads.length) : 0,
   };
 
@@ -127,7 +163,7 @@ export function LeadsDashboard() {
         {[
           { label: 'Всего лидов',    value: stats.total,    color: '#2F80ED' },
           { label: 'Новых',          value: stats.new,      color: '#F2994A' },
-          { label: 'Горячих (≥10)',  value: stats.hot,      color: '#EB5757' },
+          { label: 'Горячих',        value: stats.hot,      color: '#EB5757' },
           { label: 'Средний скор',   value: stats.avgScore, color: '#27AE60' },
         ].map(({ label, value, color }) => (
           <div
@@ -164,6 +200,10 @@ export function LeadsDashboard() {
             {s === 'all' ? `Все (${leads.length})` : STATUS_CONFIG[s]?.label}
           </button>
         ))}
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto', fontSize: '0.8125rem', color: 'rgba(15,25,35,0.65)', cursor: 'pointer' }}>
+          <input type="checkbox" checked={hideSpam} onChange={(e) => setHideSpam(e.target.checked)} />
+          Скрыть спам ({stats.spam})
+        </label>
       </div>
 
       {loading ? (
@@ -173,11 +213,11 @@ export function LeadsDashboard() {
       ) : (
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
           {/* Table */}
-          <div style={{ flex: 1, background: '#fff', borderRadius: 16, border: '1px solid rgba(15,25,35,0.08)', overflow: 'hidden' }}>
+          <div style={{ flex: 1, minWidth: 0, background: '#fff', borderRadius: 16, border: '1px solid rgba(15,25,35,0.08)', overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid rgba(15,25,35,0.08)' }}>
-                  {['#', 'Пользователь', 'Источник', 'Скор', 'Статус', 'Дата', 'Действие'].map((h) => (
+                  {['#', 'Клиент', 'Заявка', 'Источник', 'Скор', 'Статус', 'Дата', 'Действие'].map((h) => (
                     <th
                       key={h}
                       style={{
@@ -212,12 +252,25 @@ export function LeadsDashboard() {
                       onMouseEnter={(e) => { if (selected?.id !== lead.id) (e.currentTarget as HTMLElement).style.background = '#FAFBFC'; }}
                       onMouseLeave={(e) => { if (selected?.id !== lead.id) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
                     >
-                      <td style={{ padding: '0.875rem 1rem', fontSize: '0.875rem', color: 'rgba(15,25,35,0.45)', fontWeight: 600 }}>
-                        #{lead.id}
+                      <td style={{ padding: '0.875rem 1rem', fontSize: '0.875rem', color: 'rgba(15,25,35,0.45)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                        #{lead.id}{isHot(lead) ? ' 🔥' : ''}
                       </td>
                       <td style={{ padding: '0.875rem 1rem' }}>
-                        <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{lead.user?.name ?? 'Аноним'}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'rgba(15,25,35,0.45)' }}>{lead.user?.email ?? '—'}</div>
+                        <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{lead.contactName ?? lead.user?.name ?? 'Аноним'}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'rgba(15,25,35,0.45)', whiteSpace: 'nowrap' }}>{lead.contactPhone ?? lead.user?.email ?? '—'}</div>
+                      </td>
+                      <td style={{ padding: '0.875rem 1rem', maxWidth: 280 }}>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4 }}>
+                          <CategoryBadge category={lead.category} />
+                          {lead.urgency && (
+                            <span style={{ fontSize: '0.75rem', color: 'rgba(15,25,35,0.6)', whiteSpace: 'nowrap' }}>
+                              {URGENCY_LABEL[lead.urgency] ?? lead.urgency}
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '0.78rem', color: 'rgba(15,25,35,0.6)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {lead.aiSummary ?? lead.message ?? ''}
+                        </div>
                       </td>
                       <td style={{ padding: '0.875rem 1rem', fontSize: '0.8125rem', color: 'rgba(15,25,35,0.65)' }}>
                         {SOURCE_LABEL[lead.source] ?? lead.source}
@@ -292,9 +345,9 @@ export function LeadsDashboard() {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem', fontSize: '0.875rem' }}>
                 {[
-                  { label: 'Имя',      value: selected.user?.name ?? 'Аноним' },
+                  { label: 'Имя',      value: selected.contactName ?? selected.user?.name ?? 'Аноним' },
                   { label: 'Email',    value: selected.user?.email ?? '—' },
-                  { label: 'Телефон', value: selected.user?.phone ?? '—' },
+                  { label: 'Телефон', value: selected.contactPhone ?? selected.user?.phone ?? '—' },
                   { label: 'Источник', value: SOURCE_LABEL[selected.source] ?? selected.source },
                   { label: 'Скор',    value: `${selected.score}/20` },
                 ].map(({ label, value }) => (
@@ -303,6 +356,45 @@ export function LeadsDashboard() {
                     <span style={{ fontWeight: 600, textAlign: 'right' }}>{value}</span>
                   </div>
                 ))}
+
+                {selected.notes && (
+                  <div style={{ fontSize: '0.8125rem', color: 'rgba(15,25,35,0.6)' }}>{selected.notes}</div>
+                )}
+
+                {selected.message && (
+                  <>
+                    <div style={{ height: 1, background: 'rgba(15,25,35,0.06)', margin: '0.25rem 0' }} />
+                    <div style={{ fontSize: '0.75rem', color: 'rgba(15,25,35,0.45)' }}>Текст заявки</div>
+                    <div style={{ background: '#F7F9FC', borderRadius: 8, padding: '0.625rem 0.75rem', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                      {selected.message}
+                    </div>
+                  </>
+                )}
+
+                {selected.category && (
+                  <>
+                    <div style={{ fontSize: '0.75rem', color: 'rgba(15,25,35,0.45)', marginTop: '0.25rem' }}>
+                      AI-разбор — проверьте перед звонком
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <CategoryBadge category={selected.category} />
+                      {selected.urgency && <span style={{ fontSize: '0.8125rem' }}>{URGENCY_LABEL[selected.urgency] ?? selected.urgency}</span>}
+                    </div>
+                    {selected.aiSummary && <div style={{ color: 'rgba(15,25,35,0.75)' }}>{selected.aiSummary}</div>}
+                    {selected.classification?.budget != null && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'rgba(15,25,35,0.5)' }}>Бюджет из текста</span>
+                        <span style={{ fontWeight: 600 }}>{(selected.classification.budget / 1_000_000).toFixed(1)} млн ₽</span>
+                      </div>
+                    )}
+                    {selected.classification?.rooms != null && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'rgba(15,25,35,0.5)' }}>Комнат</span>
+                        <span style={{ fontWeight: 600 }}>{selected.classification.rooms === 0 ? 'студия' : selected.classification.rooms}</span>
+                      </div>
+                    )}
+                  </>
+                )}
 
                 {selected.snapshot && (
                   <>

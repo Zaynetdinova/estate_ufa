@@ -245,6 +245,19 @@ model Lead {
   //   +5  — написал "хочу купить" / "куплю"
   //   +10 — нажал "Получить подборку"
   notes     String?
+
+  // Контакты и текст заявки — нужны, чтобы менеджер мог связаться с анонимным посетителем
+  contactName  String? @map("contact_name") @db.VarChar(100)
+  contactPhone String? @map("contact_phone") @db.VarChar(30)
+  message      String?
+
+  // AI-разбор текста заявки (LeadClassifierService). На score не влияет.
+  category       String? @db.VarChar(20) // buy | rent_out | consult | spam
+  urgency        String? @db.VarChar(10) // low | medium | high
+  aiSummary      String? @map("ai_summary")
+  classification Json?   @db.JsonB
+  // Пример: { "name": "Анна", "budget": 6000000, "rooms": 1, "model": "gpt-4o-mini" }
+
   // Дополнительные данные из профиля на момент создания лида
   snapshot  Json?    @db.JsonB
   // Пример: { "budgetMin": 3000000, "budgetMax": 5000000, "intent": "high", "viewedProperties": [1,2,3] }
@@ -254,6 +267,7 @@ model Lead {
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([status])
+  @@index([category])
   @@index([score])
   @@index([createdAt])
   @@map("leads")

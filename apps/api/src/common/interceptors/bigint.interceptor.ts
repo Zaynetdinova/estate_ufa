@@ -8,7 +8,7 @@ import { map } from 'rxjs/operators';
 import { Observable } from 'rxjs';
 import { Prisma } from '@prisma/client';
 
-function convertBigInt(data: unknown): unknown {
+export function convertBigInt(data: unknown): unknown {
   if (typeof data === 'bigint') {
     return Number(data);
   }
@@ -16,6 +16,12 @@ function convertBigInt(data: unknown): unknown {
   // Prisma Decimal → number (otherwise serialised as {s,e,d} object)
   if (data instanceof Prisma.Decimal) {
     return data.toNumber();
+  }
+
+  // Date оставляем как есть: JSON.stringify превратит её в ISO-строку,
+  // а обход ниже через Object.entries дал бы пустой объект {}
+  if (data instanceof Date) {
+    return data;
   }
 
   if (Array.isArray(data)) {

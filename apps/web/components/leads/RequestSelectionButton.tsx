@@ -2,34 +2,95 @@
 
 import { useState } from 'react';
 import { leadsApi } from '@/lib/api';
+import { useAuthStore } from '@/lib/store/auth.store';
 import { useTrackEvent } from '@/lib/hooks/useTrackEvent';
 
 interface Props {
   source?: 'chat' | 'manual' | 'calculator';
   variant?: 'primary' | 'banner';
+  /** Контекст заявки для менеджера, например название ЖК */
+  context?: string;
 }
 
-type State = 'idle' | 'loading' | 'success' | 'error';
+type State = 'idle' | 'form' | 'loading' | 'success' | 'error';
 
-export function RequestSelectionButton({ source = 'manual', variant = 'primary' }: Props) {
-  const [state, setState] = useState<State>('idle');
+export function RequestSelectionButton({ source = 'manual', variant = 'primary', context }: Props) {
+  const user = useAuthStore((s) => s.user);
+  const [state,   setState]   = useState<State>('idle');
+  const [name,    setName]    = useState('');
+  const [phone,   setPhone]   = useState('');
+  const [message, setMessage] = useState('');
+  const [error,   setError]   = useState('');
   const track = useTrackEvent();
 
-  const handleClick = async () => {
-    if (state === 'loading' || state === 'success') return;
+  const openForm = () => {
+    if (state !== 'idle') return;
+    setName(user?.name ?? '');
+    setPhone(user?.phone ?? '');
+    setState('form');
+  };
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (state === 'loading') return;
     setState('loading');
+    setError('');
 
     // Трекаем событие REQUEST_SELECTION (+10 к скору)
     track('REQUEST_SELECTION', { source, trigger: 'button_click' });
 
     try {
-      await leadsApi.create({ source });
+      await leadsApi.create({
+        source,
+        contactName:  name.trim() || undefined,
+        contactPhone: phone.trim() || undefined,
+        message:      message.trim() || undefined,
+        notes:        context,
+      });
       setState('success');
-    } catch {
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Не удалось отправить заявку');
       setState('error');
-      setTimeout(() => setState('idle'), 3000);
     }
   };
+
+  const body = state === 'idle' || state === 'success'
+    ? <ButtonContent state={state} onClick={openForm} />
+    : (
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%', maxWidth: 360, margin: '0 auto' }}>
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Как к вам обращаться"
+          maxLength={100}
+          autoComplete="name"
+          style={inputStyle}
+        />
+        <input
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          placeholder="Телефон*"
+          type="tel"
+          required={!user}
+          pattern="\+?[\d\s()\-]{6,20}"
+          title="Например, +7 900 123-45-67"
+          autoComplete="tel"
+          style={inputStyle}
+        />
+        <textarea
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder="Что ищете? Например: двушка до 7 млн, въезд в этом году"
+          maxLength={2000}
+          rows={3}
+          style={{ ...inputStyle, resize: 'vertical' }}
+        />
+        {state === 'error' && (
+          <div style={{ color: '#EB5757', fontSize: '0.8125rem' }}>{error}</div>
+        )}
+        <ButtonContent state={state === 'loading' ? 'loading' : 'submit'} type="submit" />
+      </form>
+    );
 
   if (variant === 'banner') {
     return (
@@ -48,26 +109,44 @@ export function RequestSelectionButton({ source = 'manual', variant = 'primary' 
         <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.875rem', marginBottom: '1.25rem', lineHeight: 1.5 }}>
           Наш специалист подберёт лучшие варианты под ваш бюджет и пожелания
         </div>
-        <ButtonContent state={state} onClick={handleClick} />
+        {body}
       </div>
     );
   }
 
-  return <ButtonContent state={state} onClick={handleClick} />;
+  return body;
 }
 
-function ButtonContent({ state, onClick }: { state: State; onClick: () => void }) {
-  const config: Record<State, { label: string; bg: string; cursor: string }> = {
+const inputStyle: React.CSSProperties = {
+  padding:      '0.65rem 0.875rem',
+  borderRadius: 10,
+  border:       '1.5px solid rgba(15,25,35,0.12)',
+  fontFamily:   'Manrope, sans-serif',
+  fontSize:     '0.875rem',
+  width:        '100%',
+  boxSizing:    'border-box',
+};
+
+type ButtonState = 'idle' | 'submit' | 'loading' | 'success';
+
+function ButtonContent({ state, onClick, type = 'button' }: {
+  state: ButtonState;
+  onClick?: () => void;
+  type?: 'button' | 'submit';
+}) {
+  const config: Record<ButtonState, { label: string; bg: string; cursor: string }> = {
     idle:    { label: 'Получить подборку',   bg: '#27AE60', cursor: 'pointer' },
+    submit:  { label: 'Отправить заявку',    bg: '#27AE60', cursor: 'pointer' },
     loading: { label: 'Отправляем запрос…',  bg: '#6B7280', cursor: 'not-allowed' },
     success: { label: 'Заявка принята!',     bg: '#27AE60', cursor: 'default' },
-    error:   { label: 'Ошибка. Повторить?',  bg: '#EB5757', cursor: 'pointer' },
   };
 
   const { label, bg, cursor } = config[state];
+  const active = state === 'idle' || state === 'submit';
 
   return (
     <button
+      type={type}
       onClick={onClick}
       disabled={state === 'loading'}
       style={{
@@ -87,10 +166,10 @@ function ButtonContent({ state, onClick }: { state: State; onClick: () => void }
         alignItems:   'center',
         justifyContent: 'center',
         gap:          '0.5rem',
-        boxShadow:    state === 'idle' ? '0 2px 12px rgba(39,174,96,0.35)' : 'none',
+        boxShadow:    active ? '0 2px 12px rgba(39,174,96,0.35)' : 'none',
       }}
       onMouseEnter={(e) => {
-        if (state === 'idle') e.currentTarget.style.transform = 'translateY(-1px)';
+        if (active) e.currentTarget.style.transform = 'translateY(-1px)';
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.transform = 'translateY(0)';
