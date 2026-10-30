@@ -211,7 +211,7 @@ model UserEvent {
   //   USER_MESSAGE       — сообщение в чате
   //   VIEW_PROPERTY      — просмотр страницы ЖК
   //   CALCULATOR_USED    — использование калькулятора
-  //   REQUEST_SELECTION  — нажал "Получить подборку"
+  //   REQUEST_SELECTION  — оставил заявку «Подобрать с менеджером»
   //   ADD_FAVORITE       — добавил в избранное
   //   AUTH_LOGIN         — авторизовался
   payload    Json     @db.JsonB
@@ -243,7 +243,7 @@ model Lead {
   //   +2  — использовал калькулятор
   //   +3  — смотрел >3 ЖК
   //   +5  — написал "хочу купить" / "куплю"
-  //   +10 — нажал "Получить подборку"
+  //   +10 — оставил заявку «Подобрать с менеджером»
   notes     String?
 
   // Контакты и текст заявки — нужны, чтобы менеджер мог связаться с анонимным посетителем
@@ -261,6 +261,11 @@ model Lead {
   // Дополнительные данные из профиля на момент создания лида
   snapshot  Json?    @db.JsonB
   // Пример: { "budgetMin": 3000000, "budgetMax": 5000000, "intent": "high", "viewedProperties": [1,2,3] }
+
+  // Сессия чата на сайте: по ней менеджер видит переписку клиента с AI-консультантом
+  sessionId    String? @map("session_id") @db.VarChar(64)
+  // Заметки менеджера по итогам звонка. notes — контекст от сайта (ЖК, расчёт калькулятора)
+  managerNotes String? @map("manager_notes")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -268,6 +273,7 @@ model Lead {
 
   @@index([status])
   @@index([category])
+  @@index([sessionId])
   @@index([score])
   @@index([createdAt])
   @@map("leads")

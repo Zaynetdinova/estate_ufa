@@ -231,23 +231,6 @@
     },
     {
       "parameters": {
-        "url": "http://n8n:5678/webhook/lead-funnel",
-        "method": "POST",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {
-          "timeout": 5000
-        }
-      },
-      "id": "forward-lead-email",
-      "name": "Forward to WF04 Email",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4,
-      "position": [1160, 1060]
-    },
-    {
-      "parameters": {
         "jsCode": "const { userId, payload } = $input.first().json;\nconsole.log(`[ADD_FAVORITE] user=${userId} property=${payload?.propertyId}`);\nreturn [{ json: { logged: true } }];"
       },
       "id": "log-favorite",
@@ -278,19 +261,12 @@
     },
     {
       "parameters": {
-        "url": "http://n8n:5678/webhook/new-lead",
-        "method": "POST",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {
-          "timeout": 5000
-        }
+        "jsCode": "const { userId, payload } = $input.first().json;\n// Уведомление менеджеру API отправляет в Telegram напрямую, письма клиентам отключены\nconsole.log(`[NEW_LEAD] lead=${payload?.leadId} user=${userId ?? 'anon'} source=${payload?.source}`);\nreturn [{ json: { logged: true } }];"
       },
-      "id": "forward-new-lead",
-      "name": "Forward to WF01 New Lead",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4,
+      "id": "log-new-lead",
+      "name": "Log NEW_LEAD",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [940, 1060]
     }
   ],
@@ -356,12 +332,7 @@
         ],
         [
           {
-            "node": "Forward to WF01 New Lead",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Forward to WF04 Email",
+            "node": "Log NEW_LEAD",
             "type": "main",
             "index": 0
           }

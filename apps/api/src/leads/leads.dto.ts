@@ -1,5 +1,5 @@
 import { Transform } from 'class-transformer';
-import { IsIn, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { Equals, IsIn, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 
 const trim = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value);
 
@@ -31,6 +31,16 @@ export class CreateLeadDto {
   @MinLength(3)
   @MaxLength(2000)
   message?: string;
+
+  /** Сессия чата на сайте — менеджер увидит переписку клиента с AI-консультантом */
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  sessionId?: string;
+
+  /** Согласие на обработку персональных данных (152-ФЗ) */
+  @Equals(true, { message: 'Нужно согласие на обработку персональных данных' })
+  consent: boolean;
 }
 
 export class UpdateLeadStatusDto {
@@ -40,4 +50,10 @@ export class UpdateLeadStatusDto {
   @IsOptional()
   @IsString()
   notes?: string;
+}
+
+export class UpdateLeadNotesDto {
+  @IsString()
+  @MaxLength(5000)
+  managerNotes: string;
 }

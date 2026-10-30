@@ -23,8 +23,10 @@ interface AiProfileExtract {
   };
 }
 
+export type ChatIntent = 'property_search' | 'knowledge_question' | 'general_question';
+
 interface SearchRequestExtract {
-  intent?: 'property_search' | 'knowledge_question' | 'general_question';
+  intent?: ChatIntent;
   budgetMax?: number | null;
   rooms?: number | null;
   district?: string | null;
@@ -51,9 +53,10 @@ export class ChatService {
 
   /**
    * Стриминговый ответ AI.
-   * Возвращает ReadableStream — контроллер пробрасывает его в Response.
+   * Возвращает ReadableStream — контроллер пробрасывает его в Response —
+   * и тип запроса: после подбора квартир сайт предлагает связаться с менеджером.
    */
-  async streamResponse(dto: SendMessageDto, userId?: number): Promise<ReadableStream> {
+  async streamResponse(dto: SendMessageDto, userId?: number): Promise<{ stream: ReadableStream; intent: ChatIntent }> {
     const sessionId = dto.sessionId ?? this.generateSessionId();
     const lastUserMessage = dto.messages.filter((m) => m.role === 'user').at(-1)?.content ?? '';
 
@@ -96,11 +99,14 @@ export class ChatService {
     if (searchRequest.intent === 'knowledge_question') {
       const passages = await this.knowledge.search(lastUserMessage);
       if (passages.length === 0) {
-        return this.createTextStream(
-          'В подключённой базе знаний нет подтверждённого ответа на этот вопрос. Могу уточнить информацию у менеджера.',
-          userId,
-          sessionId,
-        );
+        return {
+          stream: this.createTextStream(
+            'В подключённой базе знаний нет подтверждённого ответа на этот вопрос. Могу уточнить информацию у менеджера.',
+            userId,
+            sessionId,
+          ),
+          intent: 'knowledge_question',
+        };
       }
 
       const stream = await this.openai.chat.completions.create({
@@ -113,7 +119,7 @@ export class ChatService {
         ],
       });
       const sourceFooter = this.buildKnowledgeSourceFooter(passages);
-      return this.createTrackedStream(stream, userId, sessionId, sourceFooter);
+      return { stream: this.createTrackedStream(stream, userId, sessionId, sourceFooter), intent: 'knowledge_question' };
     }
 
     if (searchRequest.intent === 'property_search') {
@@ -124,11 +130,14 @@ export class ChatService {
           budgetMax == null ? 'максимальный бюджет' : '',
           rooms == null ? 'количество комнат' : '',
         ].filter(Boolean).join(' и ');
-        return this.createTextStream(
-          `Чтобы подобрать варианты, подскажите, пожалуйста, ${missing}.`,
-          userId,
-          sessionId,
-        );
+        return {
+          stream: this.createTextStream(
+            `Чтобы подобрать варианты, подскажите, пожалуйста, ${missing}.`,
+            userId,
+            sessionId,
+          ),
+          intent: 'general_question',
+        };
       }
 
       const candidates = await this.properties.findForAiSearch({
@@ -146,7 +155,7 @@ export class ChatService {
           ...dto.messages.slice(-10),
         ],
       });
-      return this.createTrackedStream(stream, userId, sessionId);
+      return { stream: this.createTrackedStream(stream, userId, sessionId), intent: 'property_search' };
     }
 
     // 4. Получаем контекст ЖК для system prompt
@@ -164,7 +173,7 @@ export class ChatService {
     });
 
     // 6. Сохраняем ответ AI в БД в конце стрима (side-effect через tee)
-    return this.createTrackedStream(stream, userId, sessionId);
+    return { stream: this.createTrackedStream(stream, userId, sessionId), intent: 'general_question' };
   }
 
   /** Извлекаем только параметры фильтрации; никогда не исполняем сгенерированный SQL. */
@@ -232,6 +241,7 @@ ${JSON.stringify(options)}
 - Не называй объект близким к центру и не утверждай расстояние: геофильтр пока не настроен.${locationNeedsClarification ? ' Пользователь указал расплывчатое пожелание по расположению; скажи, что бюджет и комнаты проверены, а для проверки близости к центру уточни удобные районы или максимальное расстояние.' : ''}
 - Не делай выводов о сроке сдачи: сроки в каталоге могут быть устаревшими.
 - Кратко объясни, почему найденные планировки подходят, и задай один следующий вопрос.
+- Если варианты нашлись, в конце одной фразой предложи передать запрос менеджеру: он проверит наличие и актуальные цены и свяжется в течение дня.
 - Отвечай по-русски и не придумывай сведения.`;
   }
 
@@ -390,7 +400,8 @@ ${propList}
 3. Рекомендуй конкретные ЖК из списка выше.
 4. Никогда не придумывай ЖК, которых нет в списке.
 5. Отвечай на русском языке.
-6. Никогда не упоминай и не предлагай нажать кнопку "Получить подборку" или любые другие кнопки интерфейса.`;
+6. Когда клиент готов к покупке (спрашивает про бронь, просмотр, ипотеку, наличие квартир) или нужна информация, которой нет в списке, предложи кнопку «Подобрать с менеджером» под чатом: менеджер свяжется в течение дня. Не предлагай это в каждом ответе.
+7. Не упоминай другие кнопки интерфейса.`;
   }
 
   async getHistory(userId: number, sessionId?: string) {

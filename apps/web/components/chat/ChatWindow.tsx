@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useChat } from '@/lib/hooks/useChat';
 import { MessageBubble } from './MessageBubble';
 import { ChatInput } from './ChatInput';
+import { RequestSelectionButton } from '@/components/leads/RequestSelectionButton';
 
 const SUGGESTIONS = [
   { icon: '💰', label: 'Лучший для инвестиций', text: 'Какой ЖК самый выгодный для инвестиций?' },
@@ -13,7 +14,7 @@ const SUGGESTIONS = [
 ];
 
 export function ChatWindow() {
-  const { messages, isLoading, error, sendMessage, clearError } = useChat();
+  const { messages, isLoading, error, lastIntent, sendMessage, clearError } = useChat();
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -152,6 +153,17 @@ export function ChatWindow() {
         ))}
       </div>
 
+      {/* ── Заявка менеджеру. После подбора квартир блок выделяется ── */}
+      <ManagerRequest
+        highlight={lastIntent === 'property_search' && !isLoading}
+        // В поле «Что ищете?» — последние сообщения клиента, чтобы не повторять запрос
+        getDefaultMessage={() => messages
+          .filter((m) => m.role === 'user')
+          .slice(-3)
+          .map((m) => m.content)
+          .join('\n')}
+      />
+
       {/* ── Input ── */}
       <div
         style={{
@@ -165,6 +177,44 @@ export function ChatWindow() {
         }}
       >
         <ChatInput onSend={sendMessage} disabled={isLoading} />
+      </div>
+    </div>
+  );
+}
+
+function ManagerRequest({ highlight, getDefaultMessage }: { highlight: boolean; getDefaultMessage: () => string }) {
+  const [formOpen, setFormOpen] = useState(false);
+
+  return (
+    <div
+      style={{
+        display:      'flex',
+        flexWrap:     'wrap',
+        alignItems:   'center',
+        gap:          '0.5rem 1rem',
+        marginBottom: '0.75rem',
+        padding:      '0.625rem 0.875rem',
+        borderRadius: 16,
+        border:       `1.5px solid ${highlight ? 'rgba(39,174,96,0.45)' : 'rgba(15,25,35,0.08)'}`,
+        background:   highlight ? '#E8F8EE' : '#fff',
+        flexShrink:   0,
+        transition:   'all 0.2s',
+      }}
+    >
+      {!formOpen && (
+        <div style={{ flex: '1 1 220px', fontSize: '0.8125rem', color: 'rgba(15,25,35,0.65)', lineHeight: 1.45 }}>
+          {highlight
+            ? 'Менеджер проверит наличие и актуальные цены по этим вариантам и свяжется в течение дня'
+            : 'Хотите, чтобы живой специалист подобрал квартиру? Свяжемся в течение дня'}
+        </div>
+      )}
+      <div style={{ flex: '1 1 260px', display: 'flex', justifyContent: formOpen ? 'center' : 'flex-end' }}>
+        <RequestSelectionButton
+          source="chat"
+          variant="compact"
+          getDefaultMessage={getDefaultMessage}
+          onFormToggle={setFormOpen}
+        />
       </div>
     </div>
   );

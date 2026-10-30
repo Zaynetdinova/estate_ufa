@@ -5,9 +5,10 @@ import { ScoringService } from './scoring.service';
 import { LeadClassifierService } from './lead-classifier.service';
 import { N8nModule } from '../n8n/n8n.module';
 import { EventsModule } from '../events/events.module';
+import { TelegramModule } from '../telegram/telegram.module';
 
 @Module({
-  imports: [N8nModule, EventsModule],
+  imports: [N8nModule, EventsModule, TelegramModule],
   providers: [LeadsService, ScoringService, LeadClassifierService],
   controllers: [LeadsController],
   exports: [LeadsService, ScoringService],

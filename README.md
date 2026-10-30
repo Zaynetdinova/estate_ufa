@@ -44,6 +44,7 @@ DATABASE_URL="<direct-url>" npm run db:seed     # демо-данные
 | `OPENAI_API_KEY` | да | Для AI-чата, RAG и рекомендаций |
 | `NODE_ENV` | — | `production` |
 | `REDIS_URL`, `N8N_WEBHOOK_URL` | нет | Без них API работает без кэша и автоматизаций |
+| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | нет | Уведомления менеджерам о новых заявках; несколько chat id — через запятую. Без них уведомления выключены |
 | `SWAGGER_ENABLED` | нет | `true` — открыть `/api/docs` на проде |
 
 **Сайт** (`apps/web`). Значения `NEXT_PUBLIC_*` попадают в клиентский bundle, секреты туда добавлять нельзя.
@@ -53,6 +54,17 @@ DATABASE_URL="<direct-url>" npm run db:seed     # демо-данные
 | `NEXT_PUBLIC_API_URL` | Публичный HTTPS URL API |
 | `NEXT_PUBLIC_SITE_URL` | URL сайта, например `https://estate-ufa.vercel.app` |
 | `NEXT_PUBLIC_YANDEX_MAPS_KEY` | Ключ JavaScript API Яндекс Карт с ограничением по домену сайта |
+
+### Уведомления менеджерам в Telegram
+
+О каждой заявке API сразу пишет в Telegram: контакты, источник (страница ЖК, чат, калькулятор), AI-разбор, скор и ссылку на карточку лида в админке. Спам не отправляется. n8n для этого не нужен, поэтому уведомления работают и на Vercel.
+
+1. Создайте бота у [@BotFather](https://t.me/BotFather) и скопируйте токен.
+2. Каждый менеджер открывает бота и нажимает **Start** (бот не может написать первым).
+3. Узнайте chat id: откройте `https://api.telegram.org/bot<ТОКЕН>/getUpdates` и найдите `"chat":{"id": ...}`.
+4. В настройках проекта API на Vercel (Settings → Environment Variables) задайте `TELEGRAM_BOT_TOKEN` и `TELEGRAM_CHAT_ID` (несколько id — через запятую) и сделайте Redeploy.
+
+Токен — секрет: храните его только в переменных окружения, не в коде и не в `NEXT_PUBLIC_*`.
 
 ### Роли и доступ к лидам
 
@@ -86,7 +98,8 @@ UPDATE users SET role = 'admin' WHERE email = 'you@example.com';
 - Подбор планировок по комнатам и бюджету с последующим объяснением вариантов.
 - Ответы на FAQ с указанием источников.
 - Создание лида и детерминированная оценка готовности клиента.
-- Автоматизации n8n для рекомендаций, событий, Telegram-уведомлений и email-цепочки.
+- Заявка «Подобрать с менеджером» со страницы ЖК, из чата и калькулятора; уведомление менеджерам в Telegram.
+- Автоматизации n8n для рекомендаций и событий.
 - Swagger-документация REST API (локально; на проде включается `SWAGGER_ENABLED=true`).
 
 ## Архитектура
@@ -117,10 +130,9 @@ flowchart LR
     WF2 --> OPENAI[OpenAI API]
     WF2 --> API
 
+    API -->|новая заявка| TG[Telegram менеджерам]
     API -->|события /events| WF3[n8n: 03 Events Router]
-    WF3 --> TG[Telegram]
-    WF3 --> WF4[n8n: 04 Email Funnel]
-    WF4 --> GMAIL[Gmail]
+    WF3 --> TG
 ```
 
 ### RAG: от документа к ответу с источником
@@ -147,10 +159,10 @@ flowchart LR
 
 | Workflow | Вход | Назначение |
 |---|---|---|
-| **01 — New Lead → Telegram** | `POST /webhook/new-lead` | Формирует уведомление о лиде с контактами и AI-разбором заявки, спам пропускает. Для горячего лида отправляет отдельное уведомление. |
 | **02 — Recommendations → GPT** | `POST /webhook/recommendations` | Получает кандидатов из API, просит OpenAI ранжировать их и вернуть краткое обоснование в JSON. |
-| **03 — Events Router** | `POST /webhook/events` | Разбирает пользовательские события. Для горячих фраз в чате может отправить Telegram-уведомление. Событие `NEW_LEAD` пересылает в workflow 01 и 04. |
-| **04 — Email Funnel** | `POST /webhook/lead-funnel` | Отправляет письмо сразу, затем продолжает цепочку после ожиданий в 2 и 5 дней. |
+| **03 — Events Router** | `POST /webhook/events` | Разбирает пользовательские события. Для горячих фраз в чате может отправить Telegram-уведомление. Событие `NEW_LEAD` только логирует: уведомление о заявке API отправляет в Telegram сам. |
+
+Workflow «01 — New Lead → Telegram» и «04 — Email Funnel» удалены: уведомление перенесено в API, письма клиентам отключены.
 
 ```mermaid
 sequenceDiagram
@@ -158,11 +170,11 @@ sequenceDiagram
     participant A as NestJS API
     participant D as PostgreSQL
     participant N as n8n
-    participant T as Telegram / Gmail
+    participant T as Telegram
     W->>A: Запрос на подбор или сообщение
     A->>D: Событие, профиль, объекты
     A->>N: Webhook с типом события
-    N->>T: Уведомление или email
+    N->>T: Уведомление о горячей фразе в чате
     A-->>W: JSON или поток ответа
 ```
 
@@ -173,7 +185,7 @@ sequenceDiagram
 ```mermaid
 xychart-beta
     title "Баллы за сигналы готовности к покупке"
-    x-axis ["Калькулятор", ">3 ЖК", "Намерение купить", "Запрос подборки"]
+    x-axis ["Калькулятор", ">3 ЖК", "Намерение купить", "Заявка менеджеру"]
     y-axis "Баллы" 0 --> 10
     bar [2, 3, 5, 10]
 ```
@@ -183,13 +195,23 @@ xychart-beta
 | Использовал калькулятор | +2 |
 | Посмотрел больше 3 ЖК | +3 |
 | В сообщении есть фраза о намерении купить | +5 |
-| Запросил подборку | +10 |
+| Оставил заявку «Подобрать с менеджером» | +10 |
 
 **Горячий лид:** score ≥ 10 **или** AI-разбор отметил заявку как срочную; спам горячим не бывает. Итог сохраняется в таблице лидов вместе со snapshot профиля и пользовательских сигналов.
 
+### Заявка «Подобрать с менеджером»
+
+Кнопка есть на странице ЖК, в чате (под окном переписки; после подбора квартир блок выделяется) и в калькуляторе. Она открывает форму: имя, телефон (обязателен для анонимного посетителя), «что ищете» и обязательное согласие на обработку персональных данных. После отправки клиент видит: «Менеджер свяжется с вами в течение дня».
+
+- В чате поле «что ищете» заполняется последними сообщениями клиента.
+- В `notes` уходит контекст: название ЖК или параметры расчёта калькулятора.
+- С заявкой сохраняется `sessionId` чата — в карточке лида менеджер видит всю переписку клиента с AI-консультантом (`GET /leads/:id/chat`).
+- Менеджер записывает итог звонка в «Заметки менеджера» (`PATCH /leads/:id/notes`).
+- Ссылка из Telegram `/admin/leads?id=N` сразу открывает карточку лида.
+
 ### AI-разбор текста заявки
 
-Кнопка «Получить подборку» открывает форму: имя, телефон (обязателен для анонимного посетителя) и свободный текст — «что ищете». Текст разбирает `LeadClassifierService` (подход перенесён из проекта [lead-classifier](https://github.com/Zaynetdinova/lead-classifier)):
+Текст заявки разбирает `LeadClassifierService` (подход перенесён из проекта [lead-classifier](https://github.com/Zaynetdinova/lead-classifier)):
 
 ```json
 { "name": "Анна", "budget": 6000000, "rooms": 1, "category": "buy", "urgency": "high",
@@ -212,10 +234,8 @@ xychart-beta
 
 Проведены ручные smoke-проверки опубликованных webhook workflow на тестовых данных:
 
-- **01:** score 10 прошёл фильтр, выполнились обычное и горячее Telegram-уведомления.
 - **02:** OpenAI вернул рекомендацию в ожидаемой JSON-структуре.
 - **03:** горячая фраза прошла через intent-фильтр и Telegram-узел.
-- **04:** Gmail-узел принял первое письмо; workflow продолжил работу и ожидает следующий шаг цепочки.
 
 Это проверки отдельных workflow через webhook; они не являются автоматическими end-to-end тестами полного пути лида с сайта.
 
@@ -231,7 +251,7 @@ xychart-beta
 | LLM | OpenAI Chat Completions, GPT-4o-mini, streaming, JSON object output |
 | Embeddings | OpenAI `text-embedding-3-small` |
 | Автоматизация | n8n, webhooks, HTTP Request, Code (JavaScript), Switch, Filter, Wait |
-| Внешние интеграции | Telegram Bot API, Gmail OAuth2 |
+| Внешние интеграции | Telegram Bot API |
 | Авторизация и валидация | JWT, Passport, bcrypt, class-validator |
 | Инфраструктура | Docker, Docker Compose, отдельные PostgreSQL-базы `estate_db` и `n8n_db` |
 
@@ -254,7 +274,6 @@ xychart-beta
 - Docker Desktop с Docker Compose.
 - OpenAI API key для чата, embeddings и GPT-рекомендаций.
 - Telegram bot/chat для уведомлений — опционально.
-- Gmail OAuth2 credentials — если проверяете email workflow.
 
 ### Установка
 
@@ -264,7 +283,7 @@ cd estate_ufa/infra
 cp .env.example .env
 ```
 
-Заполните `infra/.env`: как минимум задайте надёжные значения для `POSTGRES_PASSWORD`, `JWT_SECRET`, `N8N_PASSWORD`, `N8N_ENCRYPTION_KEY` и добавьте `OPENAI_API_KEY`. Для Telegram укажите `TELEGRAM_CHAT_ID`. Не коммитьте файл `.env`.
+Заполните `infra/.env`: как минимум задайте надёжные значения для `POSTGRES_PASSWORD`, `JWT_SECRET`, `N8N_PASSWORD`, `N8N_ENCRYPTION_KEY` и добавьте `OPENAI_API_KEY`. Для уведомлений о заявках укажите `TELEGRAM_BOT_TOKEN` и `TELEGRAM_CHAT_ID`. Не коммитьте файл `.env`.
 
 Создайте схему приложения и демонстрационные данные:
 
@@ -286,7 +305,7 @@ docker compose up -d --build
 
 ### Настройка n8n
 
-При пустом экземпляре импортируйте нужные workflow из `infra/n8n-workflows/` через интерфейс n8n. Настройте Telegram Bot credential и Gmail OAuth2 credential в n8n. Значение Telegram Chat ID передаётся в контейнер через `TELEGRAM_CHAT_ID`; личные credentials хранятся в n8n и в Git не включаются.
+При пустом экземпляре импортируйте нужные workflow из `infra/n8n-workflows/` через интерфейс n8n. Для уведомлений о горячих фразах в чате (workflow 03) настройте Telegram Bot credential в n8n. Значение Telegram Chat ID передаётся в контейнер через `TELEGRAM_CHAT_ID`; личные credentials хранятся в n8n и в Git не включаются.
 
 ## Тесты и CI
 
@@ -330,8 +349,8 @@ ARCHITECTURE.md             Расширенная техническая арх
 ## Границы прототипа и следующие шаги
 
 - Данные ЖК и FAQ демонстрационные; их нельзя считать актуальными коммерческими предложениями.
-- Онлайн-версия работает без Redis и n8n; уведомления и email-цепочка доступны только в локальном Docker Compose.
-- Email-цепочка (workflow 04) запускается только для лидов авторизованных пользователей: у анонимной заявки есть телефон, но нет email.
+- Онлайн-версия работает без Redis и n8n; уведомления о заявках API отправляет в Telegram сам, а уведомления о горячих фразах в чате (n8n) доступны только в локальном Docker Compose.
+- Письма клиентам не отправляются.
 - Точность AI-разбора на размеченной выборке не измерялась; тесты проверяют код вокруг модели, а не качество классификации.
 - Геопожелание «рядом с центром» пока не проверяется по расстоянию: фильтр поддерживает конкретный район, бюджет и число комнат.
 - Источники RAG — Markdown-файлы; загрузка PDF, права доступа по документам, автоматические оценки качества и reranking не реализованы.
