@@ -10,6 +10,8 @@ import { PrismaService } from '../prisma/prisma.service';
 const EMBEDDING_MODEL = 'text-embedding-3-small';
 const KNOWLEDGE_DIR = join(__dirname, '..', '..', 'knowledge-base');
 const MAX_CHUNK_CHARS = 1200;
+// Меняется при изменении правил разбиения — тогда база знаний переиндексируется
+const CHUNKER_VERSION = 2;
 // Initial cutoff; tune against real questions as the knowledge base grows.
 const MIN_SIMILARITY = 0.45;
 
@@ -83,7 +85,7 @@ export class KnowledgeService implements OnModuleInit {
 
       const source = `knowledge-base/${file}`;
       const documentHash = createHash('sha256')
-        .update(`${EMBEDDING_MODEL}\n${markdown}`)
+        .update(`${EMBEDDING_MODEL}\nchunker-v${CHUNKER_VERSION}\n${markdown}`)
         .digest('hex');
       const existing = await this.prisma.$queryRaw<Array<{ count: bigint }>>(Prisma.sql`
         SELECT COUNT(*)::bigint AS count
@@ -116,14 +118,18 @@ export class KnowledgeService implements OnModuleInit {
     }
   }
 
-  private splitMarkdown(markdown: string): KnowledgeChunkInput[] {
+  /**
+   * Делит Markdown на фрагменты по заголовкам # и ## (раньше — только ##, и все разделы
+   * с заголовками # склеивались с предыдущим ## и получали чужой заголовок).
+   */
+  splitMarkdown(markdown: string): KnowledgeChunkInput[] {
     const documentTitle = markdown.match(/^#\s+(.+)$/m)?.[1]?.trim() ?? 'Knowledge base';
-    const sections = markdown.split(/(?=^##\s+)/m);
+    const sections = markdown.split(/(?=^#{1,2}\s+)/m);
     const chunks: KnowledgeChunkInput[] = [];
 
     for (const section of sections) {
-      const heading = section.match(/^##\s+(.+)$/m)?.[1]?.trim() ?? documentTitle;
-      const body = section.replace(/^#{1,2}\s+.*$/gm, '').trim();
+      const heading = section.match(/^#{1,2}\s+(.+)$/m)?.[1]?.trim() ?? documentTitle;
+      const body = section.replace(/^#{1,2}\s+.*$/gm, '').replace(/^-{3,}\s*$/gm, '').trim();
       if (!body) continue;
 
       let current = '';

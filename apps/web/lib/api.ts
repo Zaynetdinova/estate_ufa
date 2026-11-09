@@ -227,7 +227,7 @@ export const chatApi = {
 
 // ── Chat (streaming) ─────────────────────────────────────────
 
-export type ChatIntent = 'property_search' | 'knowledge_question' | 'general_question';
+export type ChatIntent = 'property_search' | 'catalog_question' | 'knowledge_question' | 'general_question';
 
 /** Стримит ответ консультанта; возвращает тип запроса (после подбора квартир предлагаем менеджера). */
 export async function streamChatMessage(

@@ -37,5 +37,29 @@
     "id": "legal-advice",
     "query": "Какие юридические документы я обязан подписать при покупке?",
     "expected": "abstain"
+  },
+  {
+    "id": "catalog-investment",
+    "query": "Какой ЖК самый выгодный для инвестиций?",
+    "expected": "catalog_answer",
+    "expectedBehavior": "2–3 ЖК из каталога с ценой за м² ниже медианы и объяснением; без гарантий роста цены"
+  },
+  {
+    "id": "catalog-cheapest",
+    "query": "Покажи самые дешёвые новостройки",
+    "expected": "catalog_answer",
+    "expectedBehavior": "Самые дешёвые планировки каталога по возрастанию цены «от»"
+  },
+  {
+    "id": "catalog-district",
+    "query": "Какой район Уфы лучше для жизни?",
+    "expected": "catalog_answer",
+    "expectedBehavior": "Сравнение районов по сводке каталога и вопрос о приоритетах; без выдуманных расстояний и школ"
+  },
+  {
+    "id": "catalog-rental",
+    "query": "Где купить квартиру для сдачи в аренду?",
+    "expected": "catalog_answer",
+    "expectedBehavior": "Студии и однокомнатные с низким порогом входа; явно сказано, что ставок аренды в каталоге нет"
   }
 ]

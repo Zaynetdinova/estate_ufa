@@ -155,7 +155,7 @@ export function ChatWindow() {
 
       {/* ── Заявка менеджеру. После подбора квартир блок выделяется ── */}
       <ManagerRequest
-        highlight={lastIntent === 'property_search' && !isLoading}
+        highlight={(lastIntent === 'property_search' || lastIntent === 'catalog_question') && !isLoading}
         // В поле «Что ищете?» — последние сообщения клиента, чтобы не повторять запрос
         getDefaultMessage={() => messages
           .filter((m) => m.role === 'user')
