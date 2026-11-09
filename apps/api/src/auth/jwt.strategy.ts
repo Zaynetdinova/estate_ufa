@@ -5,9 +5,13 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { getJwtSecret } from './jwt-secret';
 
+/** user — вход на сайте, staff — вход в панель управления (/admin/login) */
+export type TokenScope = 'user' | 'staff';
+
 export interface JwtPayload {
   sub: number;   // userId
   email: string;
+  scope?: TokenScope; // у токенов, выданных до появления scope, поля нет — считаем 'user'
 }
 
 @Injectable()
@@ -28,6 +32,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       select: { id: true, email: true, name: true, role: true },
     });
     if (!user) throw new UnauthorizedException();
-    return user; // кладётся в req.user
+    const scope: TokenScope = payload.scope === 'staff' ? 'staff' : 'user';
+    return { ...user, scope }; // кладётся в req.user
   }
 }
