@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { staffFetch, StaffAuthError } from '@/lib/staff-auth';
+import { useStaffSession } from './AdminShell';
 
 interface Lead {
   id:        number;
@@ -75,17 +77,6 @@ interface ChatLine {
   createdAt: string;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
-
-async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const token = localStorage.getItem('accessToken');
-  const res = await fetch(`${API_URL}${path}`, {
-    ...init,
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...init.headers },
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json() as Promise<T>;
-}
 
 function ScoreBar({ score }: { score: number }) {
   const max   = 20;
@@ -109,34 +100,34 @@ export function LeadsDashboard() {
   const [hideSpam,      setHideSpam]      = useState(true);
   const [updating,      setUpdating]      = useState<number | null>(null);
   const [selected,      setSelected]      = useState<Lead | null>(null);
-  const [denied,        setDenied]        = useState(false);
   const [actionError,   setActionError]   = useState<string | null>(null);
 
-  const fetchLeads = useCallback(async () => {
-    const token = localStorage.getItem('accessToken');
-    if (!token) {
-      setDenied(true);
-      setLoading(false);
-      return;
+  const { signOut } = useStaffSession();
+  const [loadError,     setLoadError]     = useState(false);
+
+  // Токен истёк или у сотрудника забрали роль — отправляем на повторный вход
+  const handleError = useCallback((err: unknown) => {
+    if (err instanceof StaffAuthError) {
+      signOut(true);
+      return true;
     }
+    return false;
+  }, [signOut]);
+
+  const fetchLeads = useCallback(async () => {
     try {
-      const res  = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/leads`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.status === 401 || res.status === 403) {
-        setDenied(true);
-        return;
-      }
-      const data = await res.json();
+      const data = await staffFetch<Lead[]>('/leads');
       const list: Lead[] = Array.isArray(data) ? data : [];
       setLeads(list);
       // Ссылка из Telegram ведёт на /admin/leads?id=N — сразу открываем карточку лида
       const id = Number(new URLSearchParams(window.location.search).get('id'));
       if (id) setSelected(list.find((l) => l.id === id) ?? null);
+    } catch (err) {
+      if (!handleError(err)) setLoadError(true);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [handleError]);
 
   useEffect(() => { fetchLeads(); }, [fetchLeads]);
 
@@ -149,9 +140,10 @@ export function LeadsDashboard() {
     setUpdating(leadId);
     setActionError(null);
     try {
-      await apiRequest(`/leads/${leadId}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
+      await staffFetch(`/leads/${leadId}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
       patchLead(leadId, { status });
-    } catch {
+    } catch (err) {
+      if (handleError(err)) return;
       setActionError(`Не удалось изменить статус лида #${leadId}. Попробуйте ещё раз.`);
     } finally {
       setUpdating(null);
@@ -161,10 +153,11 @@ export function LeadsDashboard() {
   const saveNotes = async (leadId: number, managerNotes: string) => {
     setActionError(null);
     try {
-      const updated = await apiRequest<Lead>(`/leads/${leadId}/notes`, { method: 'PATCH', body: JSON.stringify({ managerNotes }) });
+      const updated = await staffFetch<Lead>(`/leads/${leadId}/notes`, { method: 'PATCH', body: JSON.stringify({ managerNotes }) });
       patchLead(leadId, { managerNotes: updated.managerNotes });
       return true;
-    } catch {
+    } catch (err) {
+      if (handleError(err)) return false;
       setActionError(`Не удалось сохранить заметку к лиду #${leadId}. Попробуйте ещё раз.`);
       return false;
     }
@@ -183,10 +176,10 @@ export function LeadsDashboard() {
     avgScore: leads.length ? Math.round(leads.reduce((s, l) => s + l.score, 0) / leads.length) : 0,
   };
 
-  if (denied) {
+  if (loadError) {
     return (
       <div style={{ textAlign: 'center', padding: '4rem 1rem', color: 'rgba(15,25,35,0.6)' }}>
-        Нет доступа. Панель лидов доступна только менеджерам.
+        Не удалось загрузить лиды. Обновите страницу.
       </div>
     );
   }
@@ -562,7 +555,7 @@ function ChatTranscript({ lead }: { lead: Lead }) {
 
   useEffect(() => {
     if (!lead.sessionId) return;
-    apiRequest<ChatLine[]>(`/leads/${lead.id}/chat`)
+    staffFetch<ChatLine[]>(`/leads/${lead.id}/chat`)
       .then(setLines)
       .catch(() => setFailed(true));
   }, [lead.id, lead.sessionId]);

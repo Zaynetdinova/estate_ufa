@@ -18,6 +18,9 @@ export function NavBar() {
   const router   = useRouter();
   const { user, logout } = useAuthStore();
 
+  // У панели управления своя шапка (AdminShell)
+  if (pathname === '/admin' || pathname.startsWith('/admin/')) return null;
+
   return (
     <nav
       style={{

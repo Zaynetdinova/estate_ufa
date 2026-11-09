@@ -11,6 +11,8 @@ import { N8nService } from '../n8n/n8n.service';
 import { N8nEventType } from '../n8n/n8n.types';
 import { getJwtSecret } from './jwt-secret';
 import { RegisterDto, LoginDto } from './auth.dto';
+import type { TokenScope } from './jwt.strategy';
+import { STAFF_ROLES } from '../common/decorators/roles.decorator';
 
 @Injectable()
 export class AuthService {
@@ -71,13 +73,36 @@ export class AuthService {
     };
   }
 
-  private signToken(userId: number, email: string): string {
+  /**
+   * Вход в панель управления: только для manager и admin.
+   * Выдаёт отдельный токен со scope 'staff' и коротким сроком жизни.
+   * На любую неудачу — один и тот же ответ, чтобы по нему нельзя было
+   * узнать, есть ли такой email и является ли он сотрудником.
+   */
+  async staffLogin(dto: LoginDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
+
+    const valid = user ? await bcrypt.compare(dto.password, user.passwordHash) : false;
+    if (!user || !valid || !STAFF_ROLES.includes(user.role)) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    return {
+      user: { id: user.id, email: user.email, name: user.name, role: user.role },
+      accessToken: this.signToken(user.id, user.email, 'staff'),
+    };
+  }
+
+  private signToken(userId: number, email: string, scope: TokenScope = 'user'): string {
+    const expiresIn = scope === 'staff'
+      ? this.config.get<string>('STAFF_JWT_EXPIRES_IN', '12h')
+      : this.config.get<string>('JWT_EXPIRES_IN', '7d');
+
     return this.jwt.sign(
-      { sub: userId, email },
-      {
-        secret:    getJwtSecret(this.config),
-        expiresIn: this.config.get<string>('JWT_EXPIRES_IN', '7d'),
-      },
+      { sub: userId, email, scope },
+      { secret: getJwtSecret(this.config), expiresIn },
     );
   }
 }

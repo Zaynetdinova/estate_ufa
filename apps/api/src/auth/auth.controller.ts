@@ -20,6 +20,13 @@ export class AuthController {
     return this.authService.login(dto);
   }
 
+  /** POST /auth/staff-login — вход в панель управления (только manager и admin) */
+  @HttpCode(HttpStatus.OK)
+  @Post('staff-login')
+  staffLogin(@Body() dto: LoginDto) {
+    return this.authService.staffLogin(dto);
+  }
+
   /** GET /auth/me — проверка токена */
   @UseGuards(JwtAuthGuard)
   @Get('me')
