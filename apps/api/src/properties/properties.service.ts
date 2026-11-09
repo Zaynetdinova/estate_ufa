@@ -143,6 +143,52 @@ export class PropertiesService {
     });
   }
 
+  /**
+   * Каталог с доступными планировками для аналитических вопросов в чате
+   * (самые дешёвые, инвестиции, районы, аренда). Расчёт — в chat/catalog-insights.ts.
+   */
+  async findForAiCatalog() {
+    const cacheKey = 'properties:ai-catalog';
+    const cached   = await this.cache.get<any[]>(cacheKey);
+    if (cached) return cached;
+
+    const rows = await this.prisma.property.findMany({
+      select: {
+        slug:         true,
+        name:         true,
+        district:     true,
+        status:       true,
+        deadlineQ:    true,
+        deadlineYear: true,
+        priceFrom:    true,
+        priceM2:      true,
+        isHot:        true,
+        description:  true,
+        layouts: {
+          where:   { isAvailable: true },
+          orderBy: { priceFrom: 'asc' },
+          select:  { rooms: true, areaMin: true, priceFrom: true },
+        },
+      },
+      orderBy: { priceFrom: 'asc' },
+      take: 60,
+    });
+
+    // BigInt и Decimal не сериализуются в JSON — без этого кэш молча не сохраняется
+    const data = rows.map((p) => ({
+      ...p,
+      priceFrom: Number(p.priceFrom),
+      layouts:   p.layouts.map((l) => ({
+        rooms:     l.rooms,
+        areaMin:   l.areaMin === null ? null : Number(l.areaMin),
+        priceFrom: l.priceFrom === null ? null : Number(l.priceFrom),
+      })),
+    }));
+
+    await this.cache.set(cacheKey, data, TTL_AI);
+    return data;
+  }
+
   /** Возвращает slug + updatedAt для sitemap.xml */
   async findSlugs() {
     return this.prisma.property.findMany({

@@ -321,7 +321,7 @@ GitHub Actions ([ci.yml](.github/workflows/ci.yml)) на каждый PR соб�
 
 ## Ручная оценка RAG
 
-Набор контрольных вопросов: [rag-evaluation-cases.json](apps/api/knowledge-base/rag-evaluation-cases.json). Он включает случаи, где консультант должен ответить по FAQ, и вопросы, где нужно воздержаться от неподтверждённого ответа.
+Набор контрольных вопросов: [rag-evaluation-cases.json](apps/api/knowledge-base/rag-evaluation-cases.json). Он включает случаи, где консультант должен ответить по FAQ, вопросы, где нужно воздержаться от неподтверждённого ответа, и аналитические вопросы по каталогу (`catalog_answer`: самые дешёвые, инвестиции, районы, аренда) — на них отвечает сводка, которую считает backend по PostgreSQL (`apps/api/src/chat/catalog-insights.ts`).
 
 Это **ручная проверка**, не автоматический benchmark. Для каждого кейса сравните ответ и заголовок источника с ожидаемыми полями.
 
